@@ -1,0 +1,60 @@
+{
+  "name": "extensible",
+  "description": "Create highly extensible software components with a simple, layered architecture. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.",
+  "version": "0.0.0",
+  "homepage": "https://github.com/tarruda/node-extensible",
+  "author": {
+    "name": "Thiago de Arruda",
+    "email": "tpadilha84@gmail.com"
+  },
+  "keywords": [
+    "plugin",
+    "plugins",
+    "pluggable",
+    "pluggability",
+    "extension",
+    "extensions",
+    "extensible",
+    "extensibility",
+    "ocp",
+    "open-closed-principle"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tarruda/node-extensible.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tarruda/node-extensible/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/tarruda/node-extensible/blob/master/LICENSE-MIT"
+    }
+  ],
+  "main": "./index",
+  "devDependencies": {
+    "mocha": "~1.16.2",
+    "nodemon": "1.0.1",
+    "testling": "~1.5.6",
+    "browserify": "~3.19.0",
+    "sinon": "~1.7.3"
+  },
+  "scripts": {
+    "test": "make test && ./node_modules/.bin/testling"
+  },
+  "testling": {
+    "browsers": [
+      "ie6",
+      "ie7",
+      "ie8",
+      "ie9",
+      "firefox/15",
+      "chrome/22",
+      "opera/12",
+      "safari/5.1"
+    ],
+    "harness": "mocha",
+    "files": "test/*.js"
+  }
+}

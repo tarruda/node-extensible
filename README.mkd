@@ -1,0 +1,14 @@
+# extensible
+
+#### Create highly extensible software components with a simple, layered architecture. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.
+
+[![Build Status](https://travis-ci.org/tarruda/node-extensible.png)](https://travis-ci.org/tarruda/node-extensible)
+<br>
+[![browser support](https://ci.testling.com/tarruda/node-extensible.png)](https://ci.testling.com/tarruda/node-extensible)
+
+
+## Installation
+
+```sh
+npm install --save extensible
+```
