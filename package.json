@@ -1,7 +1,7 @@
 {
   "name": "extensible",
   "description": "Create highly extensible software components with a simple, layered architecture. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "homepage": "https://github.com/tarruda/node-extensible",
   "author": {
     "name": "Thiago de Arruda",
