@@ -13,17 +13,21 @@ describe('extensible object', function() {
   beforeEach(function() {
     top = {};
     top[methodName] = function(arg1, arg2, arg3, cb, next) {
+      equal(this, obj);
       next(arg1 * 64, arg2, arg3, function(err, rv) { cb(err, rv / 64); });
     };
     mid = {};
     mid[methodName] = function(arg1, arg2, arg3, cb, next) {
+      equal(this, obj);
       next(arg1 * 64, arg2, arg3, function(err, rv) { cb(err, rv / 64); });
     };
-    bot = function(obj, opts) {
+    bot = function(opts) {
+      equal(this, obj);
       // add a method
-      obj.method(opts.methodName, 'arg1, arg2, arg3, cb');
+      this.method(opts.methodName, 'arg1, arg2, arg3, cb');
       var rv = {};
       rv[methodName] = function(arg1, arg2, arg3, cb, next) {
+        equal(this, obj);
         cb([1, 2], arg1);
       };
       return rv;
@@ -34,17 +38,17 @@ describe('extensible object', function() {
     obj.layer(mid);
     obj.layer(top);
 
-    sinon.spy(obj._top._layer, methodName);
-    sinon.spy(obj._top.next._layer, methodName);
-    sinon.spy(obj._top.next.next._layer, methodName);
+    sinon.spy(obj.top._layer, methodName);
+    sinon.spy(obj.top.next._layer, methodName);
+    sinon.spy(obj.top.next.next._layer, methodName);
   });
 
 
   it('passes arguments from top to bottom layer', function() {
     obj[methodName](1, 3, 4, function() {});
-    assert(obj._top._layer[methodName].calledWith(1, 3, 4));
-    assert(obj._top.next._layer[methodName].calledWith(64, 3, 4));
-    assert(obj._top.next.next._layer[methodName].calledWith(4096, 3, 4));
+    assert(obj.top._layer[methodName].calledWith(1, 3, 4));
+    assert(obj.top.next._layer[methodName].calledWith(64, 3, 4));
+    assert(obj.top.next.next._layer[methodName].calledWith(4096, 3, 4));
   });
 
 
@@ -72,22 +76,22 @@ describe('extensible object', function() {
 
 
     it('should copy layers', function() {
-      notEqual(obj._top, forked._top);
-      notEqual(obj._top.next, forked._top.next);
-      notEqual(obj._top.next.next, forked._top.next.next);
-      equal(obj._top._layer, forked._top._layer);
-      equal(obj._top.next._layer, forked._top.next._layer);
-      equal(obj._top.next.next._layer, forked._top.next.next._layer);
+      notEqual(obj.top, forked.top);
+      notEqual(obj.top.next, forked.top.next);
+      notEqual(obj.top.next.next, forked.top.next.next);
+      equal(obj.top._layer, forked.top._layer);
+      equal(obj.top.next._layer, forked.top.next._layer);
+      equal(obj.top.next.next._layer, forked.top.next.next._layer);
     });
 
 
     it('should copy layers', function() {
-      notEqual(obj._top, forked._top);
-      notEqual(obj._top.next, forked._top.next);
-      notEqual(obj._top.next.next, forked._top.next.next);
-      equal(obj._top._layer, forked._top._layer);
-      equal(obj._top.next._layer, forked._top.next._layer);
-      equal(obj._top.next.next._layer, forked._top.next.next._layer);
+      notEqual(obj.top, forked.top);
+      notEqual(obj.top.next, forked.top.next);
+      notEqual(obj.top.next.next, forked.top.next.next);
+      equal(obj.top._layer, forked.top._layer);
+      equal(obj.top.next._layer, forked.top.next._layer);
+      equal(obj.top.next.next._layer, forked.top.next.next._layer);
     });
 
 
@@ -104,11 +108,11 @@ describe('extensible object', function() {
 
       it("wont affect the original object layers", function() {
         forked.layer(top);
-        equal(top, forked._top._layer);
-        equal(top, forked._top.next._layer);
-        equal(mid, forked._top.next.next._layer);
-        equal(top, obj._top._layer);
-        equal(mid, obj._top.next._layer);
+        equal(top, forked.top._layer);
+        equal(top, forked.top.next._layer);
+        equal(mid, forked.top.next.next._layer);
+        equal(top, obj.top._layer);
+        equal(mid, obj.top.next._layer);
       });
 
 

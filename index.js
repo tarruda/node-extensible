@@ -29,7 +29,7 @@ function Extensible() {
   // methods installed into this object
   this.methods = [];
   // first and last extensions
-  this._top = null;
+  this.top = null;
   installLayerClass(this);
 }
 
@@ -38,9 +38,9 @@ function Extensible() {
 Extensible.prototype.layer = function(layer, opts) {
   if (typeof layer === 'function')
     // call factory function
-    layer = layer(this, opts);
+    layer = layer.call(this, opts);
 
-  this._top = new this._layerClass(layer, this._top);
+  this.top = new this._layerClass(layer, this.top);
 };
 
 
@@ -54,13 +54,13 @@ Extensible.prototype.method = function(name, args) {
 
   this[name] =
     new Function(args,
-      '  \nreturn this._top[' + nameStr + '](' + args + ');\n');
+      '  \nreturn this.top[' + nameStr + '](' + args + ');\n');
 
   this._layerClass.prototype[name] =
     new Function(args,
       '\n  var _this = this;\n' +
       '  if (this._layer[' + nameStr + '])\n' +
-      '    return this._layer[' + nameStr + '].call(this, ' + args + ', \n' +
+      '    return this._layer[' + nameStr + '].call(this._obj, ' + args + ', \n' +
       '      function(' + args + ') {\n' +
       '        _this.next[' + nameStr + '](' + args + ');\n' +
       '      });\n' +
@@ -82,7 +82,7 @@ Extensible.prototype.method = function(name, args) {
 Extensible.prototype.fork = function() {
   var rv = Object.create(this);
 
-  rv._top = null;
+  rv.top = null;
   rv.methods = this.methods.slice();
 
   function copyLayer(layer) {
@@ -90,7 +90,7 @@ Extensible.prototype.fork = function() {
     if (layer.next) copyLayer(layer.next);
     rv.layer(layer._layer);
   }
-  copyLayer(this._top);
+  copyLayer(this.top);
 
   installLayerClass(rv, this);
 
