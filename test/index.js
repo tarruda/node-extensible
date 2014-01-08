@@ -6,10 +6,9 @@ var extensible = require('../index');
 for (var k in assert) global[k] = assert[k];
 
 
-describe('extensible', function() {
-  var obj, top, mid, bot;
+describe('extensible object', function() {
+  var obj, top, mid, bot, methodName = 'm';
 
-  var methodName = 'm';
 
   beforeEach(function() {
     top = {};
@@ -41,7 +40,7 @@ describe('extensible', function() {
   });
 
 
-  it('arguments are sent through all layers', function() {
+  it('passes arguments from top to bottom layer', function() {
     obj[methodName](1, 3, 4, function() {});
     assert(obj._top._layer[methodName].calledWith(1, 3, 4));
     assert(obj._top.next._layer[methodName].calledWith(64, 3, 4));
@@ -49,11 +48,73 @@ describe('extensible', function() {
   });
 
 
-  it('result gets passed back through all layers', function(done) {
+  it('passes result from bottom to top layer', function(done) {
     obj[methodName](1, null, null, function(err, rv) {
       deepEqual([1, 2], err);
       deepEqual(1, rv);
       done();
+    });
+  });
+
+
+  describe('fork', function() {
+    var forked;
+    beforeEach(function() {
+      forked = obj.fork();
+    });
+
+
+    it('should copy method descriptors', function() {
+      notEqual(obj.methods, forked.methods);
+      deepEqual(['m'], obj.methods);
+      deepEqual(['m'], forked.methods);
+    });
+
+
+    it('should copy layers', function() {
+      notEqual(obj._top, forked._top);
+      notEqual(obj._top.next, forked._top.next);
+      notEqual(obj._top.next.next, forked._top.next.next);
+      equal(obj._top._layer, forked._top._layer);
+      equal(obj._top.next._layer, forked._top.next._layer);
+      equal(obj._top.next.next._layer, forked._top.next.next._layer);
+    });
+
+
+    it('should copy layers', function() {
+      notEqual(obj._top, forked._top);
+      notEqual(obj._top.next, forked._top.next);
+      notEqual(obj._top.next.next, forked._top.next.next);
+      equal(obj._top._layer, forked._top._layer);
+      equal(obj._top.next._layer, forked._top.next._layer);
+      equal(obj._top.next.next._layer, forked._top.next.next._layer);
+    });
+
+
+    describe('forked object', function() {
+      it("wont affect the original object methods", function() {
+        forked.method('y');
+        deepEqual(['m'], obj.methods);
+        deepEqual(['m', 'y'], forked.methods);
+        equal(true, 'm' in obj);
+        equal(false, 'y' in obj);
+        equal(true, 'y' in forked);
+      });
+
+
+      it("wont affect the original object layers", function() {
+        forked.layer(top);
+        equal(top, forked._top._layer);
+        equal(top, forked._top.next._layer);
+        equal(mid, forked._top.next.next._layer);
+        equal(top, obj._top._layer);
+        equal(mid, obj._top.next._layer);
+      });
+
+
+      it("has the orignal object as prototype", function() {
+        equal(obj, Object.getPrototypeOf(forked));
+      });
     });
   });
 });

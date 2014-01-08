@@ -1,18 +1,36 @@
 /*jshint eqnull:true, evil: true */
 
 
-// Base object only containing the basic infrastructure for adding
-// methods and layers 
-function Extensible() {
-  // methods installed into this object
-  this.methods = {};
-  // first and last extensions
-  this._top = null;
-  // helper class for wrapping extension objects
-  this._layerClass = function Layer(layer, next) {
+function installLayerClass(target, sup) {
+  target._layerClass = function Layer(layer, next) {
+    this._obj = target;
     this._layer = layer;
     this.next = next;
   };
+
+  if (sup) {
+    target._layerClass.prototype = Object.create(sup._layerClass.prototype, {
+      constructor: {
+        value: target._layerClass,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+  }
+}
+
+
+// Base object only containing the basic infrastructure for adding
+// methods and layers 
+function Extensible() {
+  var _this = this;
+
+  // methods installed into this object
+  this.methods = [];
+  // first and last extensions
+  this._top = null;
+  installLayerClass(this);
 }
 
 
@@ -26,8 +44,8 @@ Extensible.prototype.layer = function(layer, opts) {
 };
 
 
-// Adds a method to the object
-Extensible.prototype.method = function(name, args, extraData) {
+// Adds a new extensible method to the object.
+Extensible.prototype.method = function(name, args) {
   if (name in this)
     throw new Error(
       "Name '" + name + "' already exists in the prototype chain");
@@ -41,14 +59,42 @@ Extensible.prototype.method = function(name, args, extraData) {
   this._layerClass.prototype[name] =
     new Function(args,
       '\n  var _this = this;\n' +
-      '  if (_this._layer[' + nameStr + '])\n' +
-      '    return _this._layer[' + nameStr + '](' + args + ', \n' +
+      '  if (this._layer[' + nameStr + '])\n' +
+      '    return this._layer[' + nameStr + '].call(this, ' + args + ', \n' +
       '      function(' + args + ') {\n' +
       '        _this.next[' + nameStr + '](' + args + ');\n' +
       '      });\n' +
-      '  return _this.next[' + nameStr + '](' + args + ');\n');
+      '  return this.next[' + nameStr + '](' + args + ');\n');
 
-  this.methods[name] = extraData;
+  this.methods.push(name);
+};
+
+
+// Forks by creating a new object with all methods and layers from the current
+// object.
+//
+// Only the method descriptors and layers are copied, as the new
+// object's prototype is set to the current object, which will result in
+// all methods being inherited.
+//
+// The new object will also have its own dedicated layer class, which inherits
+// from the current layer class.
+Extensible.prototype.fork = function() {
+  var rv = Object.create(this);
+
+  rv._top = null;
+  rv.methods = this.methods.slice();
+
+  function copyLayer(layer) {
+    if (!layer) return;
+    if (layer.next) copyLayer(layer.next);
+    rv.layer(layer._layer);
+  }
+  copyLayer(this._top);
+
+  installLayerClass(rv, this);
+
+  return rv;
 };
 
 
