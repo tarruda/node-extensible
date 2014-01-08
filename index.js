@@ -1,6 +1,4 @@
 /*jshint eqnull:true, evil: true */
-
-
 function installLayerClass(target, sup) {
   target._layerClass = function Layer(layer, next) {
     this._obj = target;

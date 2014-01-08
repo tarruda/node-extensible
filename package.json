@@ -38,7 +38,9 @@
     "nodemon": "1.0.1",
     "testling": "~1.5.6",
     "browserify": "~3.19.0",
-    "sinon": "~1.7.3"
+    "sinon": "~1.7.3",
+    "es5-shim": "~2.3.0",
+    "json3": "~3.2.6"
   },
   "scripts": {
     "test": "make test && ./node_modules/.bin/testling"
@@ -55,6 +57,11 @@
       "safari/5.1"
     ],
     "harness": "mocha",
+    "scripts": [
+      "node_modules/json3/lib/json3.js",
+      "node_modules/es5-shim/es5-shim.js",
+      "node_modules/es5-shim/es5-sham.js"
+    ],
     "files": "test/*.js"
   }
 }
