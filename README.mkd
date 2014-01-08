@@ -1,6 +1,6 @@
 # extensible
 
-#### Create highly extensible software components with a simple, layered architecture. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.
+#### Create highly extensible software components with a simple architecture based on layers. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.
 
 [![Build Status](https://travis-ci.org/tarruda/node-extensible.png)](https://travis-ci.org/tarruda/node-extensible)
 <br>
@@ -12,3 +12,206 @@
 ```sh
 npm install --save extensible
 ```
+
+## Usage
+
+This package provides simple framework which can be used to create libraries
+composed of layers, similar to connect middlewares. The best way to understand
+is through an example that shows its features.
+
+The goal of this example is to build a tiny database library based on
+leveldb(leveldown) which can be extended via plugins:
+
+```js
+// levelup.js
+var leveldown = require('leveldown');
+var extensible = require('extensible');
+
+var levelup = extensible();
+
+// Add basic methods:
+levelup.method('open', 'location, cb');
+levelup.method('get', 'key, cb');
+levelup.method('put', 'key, value, cb');
+levelup.method('del', 'key, cb');
+
+// Now add the innermost layer, which implements the core database methods:
+levelup.layer({
+  open: function(location, cb) {
+    this.db = leveldown(location);
+    this.db.open(cb);
+  },
+
+  get: function(key, cb) {
+    this.db.get(key, cb);
+  },
+
+  put: function(key, value, cb) {
+    this.db.put(key, value, cb);
+  },
+
+  del: function(key, cb) {
+    this.db.del(key, cb);
+  }
+});
+
+// Export the constructor
+module.exports = function(options) {
+  // Fork the object into a new one linked with 'levelup' (inherited methods)
+  // but with its own copy of layers and method descriptors
+  return levelup.fork();
+};
+```
+
+This will result in a very simple but working database API:
+
+```js
+// test.js
+var levelup = require('./levelup');
+var db = levelup();
+var k = new Buffer([1, 2, 3]);
+var v = new Buffer([1, 2, 3, 4]);
+
+db.open('./db-example', function(err) {
+  db.put(k, v, function(err) {
+    db.get(k, function(err, val) {
+      console.error(val); // <SlowBuffer 01 02 03 04>
+    });
+  });
+});
+```
+
+The created module only supports buffers/strings as keys/values. Lets build a
+plugin which adds support to using arbitrary objects.  We will use 'msgpack-js'
+for serializing values and 'bytewise' for serializing keys:
+
+```js
+// levelup-pack.js
+var bytewise = require('bytewise');
+var msgpack = require('msgpack-js');
+
+// Since this is not the innermost layer, we will use the last argument, 'next'
+// to invoke the next layer.
+//
+// All methods receive keys so they must be serialized with bytewise for a
+// couchdb-like ordering of records.
+//
+// Methods that return values(get) must also override the callback to convert
+// the buffer back to javascript objects.
+module.exports = {
+  get: function(key, cb, next) {
+    next(bytewise.encode(key), function(err, value) {
+      if (err) return cb(err);
+      cb(null, msgpack.decode(value));
+    });
+  },
+
+  put: function(key, value, cb, next) {
+    next(bytewise.encode(key), msgpack.encode(value), cb);
+  },
+
+  del: function(key, cb, next) {
+    next(bytewise.encode(key), cb);
+  }
+};
+```
+
+Note that we havent altered the 'open' method. When a layer doens't implement a
+method its simply passed through the next layer.
+
+To use the new feature, wrap the db object into the created layer:
+
+```js
+// test.js
+var levelup = require('./levelup');
+var levelupPack = require('./levelup-pack');
+
+var db = levelup();
+// wrap into the serialization layer
+db.layer(levelupPack);
+
+var k = [1, 2, 3];
+var v = {name: 'john doe'};
+
+db.open('./db-example', function(err) {
+  db.put(k, v, function(err) {
+    db.get(k, function(err, val) {
+      console.error(val); // { name: 'john doe' }
+    });
+  });
+});
+```
+
+Layer objects can also be functions, which are called with the context set to
+the object being wrapped. To illustrate lets build a plugin which converts our
+API to return objects implementing the 'Promises/A+ spec' through the 'rsvp'
+library. It will also show how to use the 'methods' property to obtain basic
+information about the object and its methods:
+
+
+```js
+// levelup-promise.js
+var rsvp = require('rsvp');
+
+module.exports = function() {
+  var rv = {};
+
+  // this assumes all methods follow node convention of callback as last arg
+  this.methods.forEach(function(method) {
+    rv[method] = function() {
+      var next = arguments[arguments.length - 1];
+      // get all args except the 'cb' and 'next'
+      var collect = Array.prototype.slice.call(arguments, 0, arguments.length - 2);
+
+      return new rsvp.Promise(function(resolve, reject) {
+        // push the actual callback
+        args.push(function(err) {
+          if (err) return reject(err);
+          var result = Array.prototype.slice.call(arguments, 1, arguments.length);
+          // resolve passing all values returned
+          resolve.apply(this, result);
+        });
+
+        next.apply(this, args);
+      });
+    };
+  });
+
+  return rv;
+};
+```
+
+Again, to use it simply wrap on top of the db object:
+
+```js
+var levelup = require('levelup');
+var levelupPack = require('levelup-pack');
+var levelupPromise = require('levelup-promise');
+
+var db = levelup();
+// serialization
+db.layer(levelupPack);
+// promises
+db.layer(levelupPromise);
+
+var k1 = [1, 2, 3], k2 = [4, 5, 6];
+var v1 = {name: 'foo'}, v2 = {name: 'bar'};
+
+db.open('./db-example') .then(function(err) {
+  return db.put(k1, v1);
+}).then(function() {
+  return db.put(k2, v2);
+}).then(function() {
+  return db.get(k2);
+}).then(function(val) {
+  console.log(val); // {name: 'bar'}
+  return db.get(k1);
+}).then(function(val) {
+  console.log(val); // {name: 'foo'}
+}).catch(function(err) {
+  console.error(err);
+});
+```
+
+With this simple pattern for organizing code, one can build very complex and
+maintainable systems.

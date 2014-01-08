@@ -1,6 +1,6 @@
 {
   "name": "extensible",
-  "description": "Create highly extensible software components with a simple, layered architecture. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.",
+  "description": "Create highly extensible software components with a simple architecture based on layers. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.",
   "version": "0.0.2",
   "homepage": "https://github.com/tarruda/node-extensible",
   "author": {
