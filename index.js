@@ -1,4 +1,7 @@
 /*jshint eqnull:true, evil: true */
+var xtend = require('xtend');
+
+
 function installLayerClass(target, sup) {
   target._layerClass = function Layer(layer, next) {
     this._obj = target;
@@ -43,7 +46,7 @@ Extensible.prototype.layer = function(layer, opts) {
 
 
 // Adds a new extensible method to the object.
-Extensible.prototype.method = function(name, args) {
+Extensible.prototype.method = function(name, args, metadata) {
   if (name in this)
     throw new Error(
       "Name '" + name + "' already exists in the prototype chain");
@@ -64,7 +67,10 @@ Extensible.prototype.method = function(name, args) {
       '      });\n' +
       '  return this.next[' + nameStr + '](' + args + ');\n');
 
-  this.methods.push(name);
+  this.methods.push(xtend({
+    name: name,
+    args: args && args.split(/\s*,\s*/) || [],
+  }, metadata));
 };
 
 

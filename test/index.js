@@ -70,8 +70,10 @@ describe('extensible object', function() {
 
     it('should copy method descriptors', function() {
       notEqual(obj.methods, forked.methods);
-      deepEqual(['m'], obj.methods);
-      deepEqual(['m'], forked.methods);
+      deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}],
+                obj.methods);
+      deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}],
+                forked.methods);
     });
 
 
@@ -98,8 +100,10 @@ describe('extensible object', function() {
     describe('forked object', function() {
       it("wont affect the original object methods", function() {
         forked.method('y');
-        deepEqual(['m'], obj.methods);
-        deepEqual(['m', 'y'], forked.methods);
+        deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}],
+                  obj.methods);
+        deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
+          {name: 'y', args: []}], forked.methods);
         equal(true, 'm' in obj);
         equal(false, 'y' in obj);
         equal(true, 'y' in forked);

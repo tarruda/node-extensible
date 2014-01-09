@@ -158,10 +158,10 @@ module.exports = function() {
 
   // this assumes all methods follow node convention of callback as last arg
   this.methods.forEach(function(method) {
-    rv[method] = function() {
+    rv[method.name] = function() {
       var next = arguments[arguments.length - 1];
       // get all args except the 'cb' and 'next'
-      var collect = Array.prototype.slice.call(arguments, 0, arguments.length - 2);
+      var args = Array.prototype.slice.call(arguments, 0, arguments.length - 2);
 
       return new rsvp.Promise(function(resolve, reject) {
         // push the actual callback
@@ -184,9 +184,10 @@ module.exports = function() {
 Again, to use it simply wrap on top of the db object:
 
 ```js
-var levelup = require('levelup');
-var levelupPack = require('levelup-pack');
-var levelupPromise = require('levelup-promise');
+// test.js
+var levelup = require('./levelup');
+var levelupPack = require('./levelup-pack');
+var levelupPromise = require('./levelup-promise');
 
 var db = levelup();
 // serialization

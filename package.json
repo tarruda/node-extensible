@@ -33,6 +33,9 @@
     }
   ],
   "main": "./index",
+  "dependencies": {
+    "xtend": "~2.1.2"
+  },
   "devDependencies": {
     "mocha": "~1.16.2",
     "nodemon": "1.0.1",
