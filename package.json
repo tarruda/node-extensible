@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "mocha": "~1.16.2",
-    "nodemon": "1.0.1",
+    "nodemon": "~1.0.7",
     "testling": "~1.5.6",
     "browserify": "~3.19.0",
     "sinon": "~1.7.3",
@@ -46,7 +46,7 @@
     "json3": "~3.2.6"
   },
   "scripts": {
-    "test": "make test && ./node_modules/.bin/testling"
+    "test": "make test"
   },
   "testling": {
     "browsers": [

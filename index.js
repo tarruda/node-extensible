@@ -69,7 +69,7 @@ Extensible.prototype.method = function(name, args, metadata) {
 
   this.methods.push(xtend({
     name: name,
-    args: args && args.split(/\s*,\s*/) || [],
+    args: args && args.split(/\s*,\s*/) || []
   }, metadata));
 };
 
