@@ -66,7 +66,6 @@ module.exports = function(options) {
 This will result in a very simple but working database API:
 
 ```js
-// test.js
 var levelup = require('./levelup');
 var db = levelup();
 var k = new Buffer([1, 2, 3]);
@@ -122,7 +121,6 @@ method its simply passed through the next layer.
 To use the new feature, wrap the db object into the created layer:
 
 ```js
-// test.js
 var levelup = require('./levelup');
 var levelupPack = require('./levelup-pack');
 
@@ -184,7 +182,6 @@ module.exports = function() {
 Again, to use it simply wrap on top of the db object:
 
 ```js
-// test.js
 var levelup = require('./levelup');
 var levelupPack = require('./levelup-pack');
 var levelupPromise = require('./levelup-promise');
