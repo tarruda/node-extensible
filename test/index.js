@@ -36,8 +36,8 @@ describe('extensible object', function() {
     bot = function(opts) {
       equal(this, obj);
       // add a method
-      this.setMethod(opts.methodName, 'arg1, arg2, arg3, cb');
-      this.setMethod('state', 'arg');
+      this.defineMethod(opts.methodName, 'arg1, arg2, arg3, cb');
+      this.defineMethod('state', 'arg');
       var rv = {
         state: function(arg, next, layer, state) {
           equal(this, obj);
@@ -95,10 +95,10 @@ describe('extensible object', function() {
   });
 
 
-  describe('eachMethod', function() {
+  describe('eachMethodDescriptor', function() {
     it('iterates through each method metadata', function() {
       var items = [];
-      obj.eachMethod(function(method) { items.push(method); });
+      obj.eachMethodDescriptor(function(method) { items.push(method); });
       meql([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
@@ -108,11 +108,11 @@ describe('extensible object', function() {
   });
 
 
-  describe('getMethod', function() {
+  describe('getMethodDescriptor', function() {
     it('gets method by name', function() {
       meql({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
-           obj.getMethod('m'));
-      meql({name: 'state', args: ['arg']}, obj.getMethod('state'));
+           obj.getMethodDescriptor('m'));
+      meql({name: 'state', args: ['arg']}, obj.getMethodDescriptor('state'));
     });
   });
 
@@ -173,7 +173,7 @@ describe('extensible object', function() {
 
     describe('forked object', function() {
       it("wont affect the original object methods", function() {
-        forked.setMethod('y');
+        forked.defineMethod('y');
         meql([{
           name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
@@ -202,6 +202,35 @@ describe('extensible object', function() {
       });
     });
   });
+
+
+  describe('with upgraded method', function() {
+    beforeEach(function() {
+      var newTop = {};
+      // remove 1 arg
+      newTop[methodName] = function(arg1, arg2, cb, next, layer) {
+        equal(this, obj);
+        equal(newTop, layer.impl);
+        // the next layer should be unaffected
+        next(arg1, arg2, 1000, cb);
+      };
+      obj.use(newTop);
+      obj.defineMethod(methodName, 'arg1, arg2, cb');
+      sinon.spy(obj._top.impl, methodName);
+    });
+
+
+    it('should expose new API', function() {
+      obj[methodName](1, 3, function() {});
+      assert(obj._top.impl[methodName].calledWith(1, 3));
+      assert(obj._top.next.impl[methodName].calledWith(1, 3, 1000));
+      assert(obj._top.next.next.impl[methodName].calledWith(64, 3, 1000));
+      assert(obj._top.next.next.next.impl[methodName].calledWith(
+        4096, 3, 1000));
+    });
+  });
+
+
 });
 
 

@@ -7,9 +7,9 @@ var has = require('has');
 
 var reservedNames = {
   use: true,
-  setMethod: true,
-  getMethod: true,
-  eachMethod: true,
+  defineMethod: true,
+  getMethodDescriptor: true,
+  eachMethodDescriptor: true,
   eachLayer: true,
   fork: true,
   instance: true
@@ -24,7 +24,7 @@ function findAvailable(args, name) {
 
 
 function installLayerClass(target, sup) {
-  target._layerClass = function Layer(impl, next) {
+  var layerClass = function Layer(impl, next) {
     this.impl = impl;
     this.next = next;
     this.data = {
@@ -35,15 +35,17 @@ function installLayerClass(target, sup) {
   };
 
   if (sup) {
-    target._layerClass.prototype = create(sup._layerClass.prototype, {
+    layerClass.prototype = create(sup._layerClass.prototype, {
       constructor: {
-        value: target._layerClass,
+        value: layerClass,
         enumerable: false,
         writable: true,
         configurable: true
       }
     });
   }
+
+  target._layerClass = layerClass;
 }
 
 
@@ -69,11 +71,7 @@ Extensible.prototype.use = function(layer, opts) {
 
 
 // Adds or upgrade an extensible method to the object.
-Extensible.prototype.setMethod = function(name, args, metadata, upgrade) {
-  if (name in this && !upgrade)
-    throw new Error(
-      "Name '" + name + "' already exists in the prototype chain");
-
+Extensible.prototype.defineMethod = function(name, args, descriptor) {
   if (has(reservedNames, name))
     throw new Error("Name '" + name + "' is reserved");
 
@@ -90,17 +88,32 @@ Extensible.prototype.setMethod = function(name, args, metadata, upgrade) {
   // helpers
   var ctx = findAvailable(argsArray, 'ctx');
   var next = findAvailable(argsArray, 'next');
-
   var largs = argsArray.slice();
   largs.push(layer);
   largs.push(stateOrig);
+  var nargs = argsArray.slice();
+  nargs.push(stateNew);
+
+  var oargs = args, oldDescriptor;
+
+  if (oldDescriptor = this.getMethodDescriptor(name)) {
+    // when redefining a method, two things happen here:
+    // 1 - a new layer class must be created
+    // 2 - the top layer must be recreated to match this class
+    installLayerClass(this, this);
+    this._top = new this._layerClass(this._top.impl, this._top.next);
+    // oargs is how we call the next layer. for that we use the old descriptor
+    oargs = oldDescriptor.args.slice();
+    // nargs also must be updated to receive arguments compatible with the
+    // next layer
+    nargs = oargs.slice();
+    nargs.push(stateNew);
+    oargs = oargs.join(', ');
+  }
 
   this[name] =
     new Function(args,
       '\n  return this._top['+str +'].call(this, '+args +', this._top);\n');
-
-  var nargs = argsArray.slice();
-  nargs.push(stateNew);
 
   this._layerClass.prototype[name] =
     new Function(largs.join(', '),
@@ -108,33 +121,45 @@ Extensible.prototype.setMethod = function(name, args, metadata, upgrade) {
       '\n  var '+next+' = '+layer+'.next;' +
       '\n  if ('+layer+'.impl['+str+'])' +
       '\n    return '+layer+'.impl['+str+'].call('+ctx+', '+args+', ' +
-      '\n      function('+nargs.join(',')+') {' +
-      '\n        '+next+'['+str+'].call('+ctx+', '+args+', ' +
+      '\n      function('+nargs.join(', ')+') {' +
+      '\n        '+next+'['+str+'].call('+ctx+', '+oargs+', ' +
           next+', '+stateNew+' || '+stateOrig+');' +
       '\n      }, '+layer+', '+stateOrig+');' +
       '\n  return '+next+'['+str+'].call('+ctx+', '+args+', ' +
           next+', '+stateOrig+');\n');
 
-  metadata = xtend({
+  descriptor = xtend({
     name: name,
     args: argsArray,
     implementation: this[name],
     layerImplementation: this._layerClass.prototype[name]
-  }, metadata);
+  }, descriptor);
 
-  this._methods.push(metadata);
-  this._methodsByName[name] = metadata;
+  if (oldDescriptor) {
+    // keep a link to the old descriptor
+    descriptor.old = oldDescriptor;
+    for (var i = 0, l = this._methods.length; i < l; i++) {
+      if (this._methods[i] === oldDescriptor) {
+        this._methods[i] = descriptor;
+        break;
+      }
+    }
+  } else {
+    this._methods.push(descriptor);
+  }
+
+  this._methodsByName[name] = descriptor;
 };
 
 
 // Returns metadata associated with the method `name`.
-Extensible.prototype.getMethod = function(name) {
+Extensible.prototype.getMethodDescriptor = function(name) {
   return this._methodsByName[name];
 };
 
 
 // Iterates through each installed method
-Extensible.prototype.eachMethod = function(cb) {
+Extensible.prototype.eachMethodDescriptor = function(cb) {
   for (var i = 0, l = this._methods.length; i < l; i++)
     cb(this._methods[i]);
 };
