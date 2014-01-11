@@ -11,13 +11,23 @@ describe('extensible object', function() {
 
 
   beforeEach(function() {
-    top = {};
+    top = {
+      chain: function(arg, next) {
+        equal(this.target, obj);
+        next(arg);
+      }
+    };
     top[methodName] = function(arg1, arg2, arg3, cb, next, layer) {
       equal(this, obj);
       equal(top, layer.impl);
       next(arg1 * 64, arg2, arg3, function(err, rv) { cb(err, rv / 64); });
     };
-    mid = {};
+    mid = {
+      chain: function(arg, next) {
+        equal(this.target, obj);
+        next(arg);
+      }
+    };
     mid[methodName] = function(arg1, arg2, arg3, cb, next, layer) {
       equal(this, obj);
       equal(mid, layer.impl);
@@ -27,7 +37,13 @@ describe('extensible object', function() {
       equal(this, obj);
       // add a method
       this.addMethod(opts.methodName, 'arg1, arg2, arg3, cb');
-      var rv = {};
+      this.addMethod('chain', 'arg', {chainContext: true});
+      var rv = {
+        chain: function(arg, next) {
+          equal(this.target, obj);
+          next(arg);
+        }
+      };
       rv[methodName] = function(arg1, arg2, arg3, cb, next, layer) {
         equal(this, obj);
         equal(rv, layer.impl);
@@ -77,7 +93,11 @@ describe('extensible object', function() {
     it('iterates through each method metadata', function() {
       var items = [];
       obj.eachMethod(function(method) { items.push(method); });
-      deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}], items);
+      deepEqual([{
+        name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
+      }, {
+        name: 'chain', args: ['arg'], chainContext: true
+      }], items);
     });
   });
 
@@ -86,6 +106,8 @@ describe('extensible object', function() {
     it('gets method by name', function() {
       deepEqual({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
                 obj.getMethod('m'));
+      deepEqual({name: 'chain', args: ['arg'], chainContext: true},
+                obj.getMethod('chain'));
     });
   });
 
@@ -111,10 +133,16 @@ describe('extensible object', function() {
 
     it('should copy method descriptors', function() {
       notEqual(obj._methods, forked._methods);
-      deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}],
-                obj._methods);
-      deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}],
-                forked._methods);
+      deepEqual([{
+        name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
+      }, {
+        name: 'chain', args: ['arg'], chainContext: true
+      }], obj._methods);
+      deepEqual([{
+        name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
+      }, {
+        name: 'chain', args: ['arg'], chainContext: true
+      }], forked._methods);
     });
 
 
@@ -141,10 +169,18 @@ describe('extensible object', function() {
     describe('forked object', function() {
       it("wont affect the original object methods", function() {
         forked.addMethod('y');
-        deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']}],
-                  obj._methods);
-        deepEqual([{name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
-          {name: 'y', args: []}], forked._methods);
+        deepEqual([{
+          name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
+        }, {
+          name: 'chain', args: ['arg'], chainContext: true
+        }], obj._methods);
+        deepEqual([
+          {name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
+        }, {
+          name: 'chain', args: ['arg'], chainContext: true
+        }, {
+          name: 'y', args: []
+        }], forked._methods);
         equal(true, 'm' in obj);
         equal(false, 'y' in obj);
         equal(true, 'y' in forked);

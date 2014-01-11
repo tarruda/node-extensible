@@ -61,19 +61,25 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
   this[name] =
     new Function(args,
       '\n  var next = this._top;' +
-      '\n  return next[' + str + '].call(this, ' + args + ', next);\n');
+      // call context, used to pass extra state through the chain
+      (
+        metadata && metadata.chainContext ?
+        '\n  var ctx = {target: this};'   :
+        '\n  var ctx = this;'
+      ) +
+      '\n  return next[' + str + '].call(ctx, ' + args + ', next);\n');
 
   this._layerClass.prototype[name] =
     new Function(args,
-      '\n  var _this = this;' +
+      '\n  var ctx = this;' +
       '\n  var layer = arguments[arguments.length - 1];' +
       '\n  var next = layer.next;' +
       '\n  if (layer.impl[' + str + '])' +
-      '\n    return layer.impl[' + str + '].call(this, ' + args + ', ' +
+      '\n    return layer.impl[' + str + '].call(ctx, ' + args + ', ' +
       '\n      function(' + args + ') {' +
-      '\n        next[' + str + '].call(_this, ' + args + ', next);' +
+      '\n        next[' + str + '].call(ctx, ' + args + ', next);' +
       '\n      }, layer);' +
-      '\n  return next[' + str + '].call(this, ' + args + ', next);\n');
+      '\n  return next[' + str + '].call(ctx, ' + args + ', next);\n');
 
   metadata = xtend({
     name: name,
