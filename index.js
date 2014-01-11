@@ -2,6 +2,18 @@
 var xtend = require('xtend');
 var create = require('object-create');
 var jsonify = require('jsonify');
+var has = require('has');
+
+
+var reservedNames = {
+  use: true,
+  setMethod: true,
+  getMethod: true,
+  eachMethod: true,
+  eachLayer: true,
+  fork: true,
+  instance: true
+};
 
 
 function findAvailable(args, name) {
@@ -56,26 +68,23 @@ Extensible.prototype.use = function(layer, opts) {
 };
 
 
-// Adds a new extensible method to the object.
-Extensible.prototype.addMethod = function(name, args, metadata) {
-  if (name in this)
+// Adds or upgrade an extensible method to the object.
+Extensible.prototype.setMethod = function(name, args, metadata, upgrade) {
+  if (name in this && !upgrade)
     throw new Error(
       "Name '" + name + "' already exists in the prototype chain");
 
+  if (has(reservedNames, name))
+    throw new Error("Name '" + name + "' is reserved");
+
   var str = jsonify.stringify(name);
   var argsArray = args && args.split(/\s*,\s*/) || [];
-
-  this[name] =
-    new Function(args,
-      '\n  return this._top['+str +'].call(this, '+args +', this._top);\n');
-
   // layer argument
   var layer = findAvailable(argsArray, 'layer');
-  // Accept/pass an extra argument that layers can use to
-  // send state through the entire chain. For example, if
-  // a top layer 'knows' about another layer deeper in the call
-  // chain this can be used to pass options without affecting
-  // the intermediate layers
+  // Extra argument that layers can use to send data across non-adjacent
+  // layers in the chain. Each layer has the opportunity of modifying the
+  // state(stateNew) but if a falsy value is passed, the original state
+  // persists(stateOrig)
   var stateOrig = findAvailable(argsArray, 'stateOrig');
   var stateNew = findAvailable(argsArray, 'stateNew');
   // helpers
@@ -85,6 +94,10 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
   var largs = argsArray.slice();
   largs.push(layer);
   largs.push(stateOrig);
+
+  this[name] =
+    new Function(args,
+      '\n  return this._top['+str +'].call(this, '+args +', this._top);\n');
 
   var nargs = argsArray.slice();
   nargs.push(stateNew);
@@ -104,16 +117,13 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
 
   metadata = xtend({
     name: name,
-    args: argsArray
+    args: argsArray,
+    implementation: this[name],
+    layerImplementation: this._layerClass.prototype[name]
   }, metadata);
 
   this._methods.push(metadata);
   this._methodsByName[name] = metadata;
-};
-
-
-Extensible.prototype.upgradeMethod = function(name, args, metadata) {
-
 };
 
 

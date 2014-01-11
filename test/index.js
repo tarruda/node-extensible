@@ -36,8 +36,8 @@ describe('extensible object', function() {
     bot = function(opts) {
       equal(this, obj);
       // add a method
-      this.addMethod(opts.methodName, 'arg1, arg2, arg3, cb');
-      this.addMethod('state', 'arg');
+      this.setMethod(opts.methodName, 'arg1, arg2, arg3, cb');
+      this.setMethod('state', 'arg');
       var rv = {
         state: function(arg, next, layer, state) {
           equal(this, obj);
@@ -99,7 +99,7 @@ describe('extensible object', function() {
     it('iterates through each method metadata', function() {
       var items = [];
       obj.eachMethod(function(method) { items.push(method); });
-      deepEqual([{
+      meql([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
         name: 'state', args: ['arg']
@@ -110,9 +110,9 @@ describe('extensible object', function() {
 
   describe('getMethod', function() {
     it('gets method by name', function() {
-      deepEqual({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
-                obj.getMethod('m'));
-      deepEqual({name: 'state', args: ['arg']}, obj.getMethod('state'));
+      meql({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
+           obj.getMethod('m'));
+      meql({name: 'state', args: ['arg']}, obj.getMethod('state'));
     });
   });
 
@@ -138,12 +138,12 @@ describe('extensible object', function() {
 
     it('should copy method descriptors', function() {
       notEqual(obj._methods, forked._methods);
-      deepEqual([{
+      meql([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
         name: 'state', args: ['arg']
       }], obj._methods);
-      deepEqual([{
+      meql([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
         name: 'state', args: ['arg']
@@ -173,13 +173,13 @@ describe('extensible object', function() {
 
     describe('forked object', function() {
       it("wont affect the original object methods", function() {
-        forked.addMethod('y');
-        deepEqual([{
+        forked.setMethod('y');
+        meql([{
           name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
           name: 'state', args: ['arg']
         }], obj._methods);
-        deepEqual([
+        meql([
           {name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
           name: 'state', args: ['arg']
@@ -203,3 +203,19 @@ describe('extensible object', function() {
     });
   });
 });
+
+
+function meql(expected, actual) {
+  if (actual.length) {
+    for (var i = 0, l = actual.length; i < l; i++) {
+      var act = actual[i];
+      delete act.implementation;
+      delete act.layerImplementation;
+    }
+  } else {
+    delete actual.implementation;
+    delete actual.layerImplementation;
+
+  }
+  return deepEqual(expected, actual);
+}

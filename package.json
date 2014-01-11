@@ -36,7 +36,8 @@
   "dependencies": {
     "xtend": "~2.1.2",
     "object-create": "~0.1.0",
-    "jsonify": "0.0.0"
+    "jsonify": "0.0.0",
+    "has": "0.0.1"
   },
   "devDependencies": {
     "mocha": "~1.16.2",
