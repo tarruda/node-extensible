@@ -1,8 +1,14 @@
 /*jshint eqnull:true, evil: true */
 var xtend = require('xtend');
+var create = require('object-create');
+var jsonify = require('jsonify');
 
 
-var create = Object.create;
+function findAvailable(args, name) {
+  for (var i = 0, l = args.length; i < l; i++)
+    if (args[i] === name) return findAvailable(args, name + '_');
+  return name;
+}
 
 
 function installLayerClass(target, sup) {
@@ -56,34 +62,45 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
     throw new Error(
       "Name '" + name + "' already exists in the prototype chain");
 
-  var str = JSON.stringify(name);
+  var str = jsonify.stringify(name);
+  var argsArray = args && args.split(/\s*,\s*/) || [];
 
   this[name] =
     new Function(args,
-      '\n  var next = this._top;' +
-      // call context, used to pass extra state through the chain
-      (
-        metadata && metadata.chainContext ?
-        '\n  var ctx = {target: this};'   :
-        '\n  var ctx = this;'
-      ) +
-      '\n  return next[' + str + '].call(ctx, ' + args + ', next);\n');
+      '\n  return this._top['+str +'].call(this, '+args +', this._top);\n');
+
+  // layer argument
+  var layer = findAvailable(argsArray, 'layer');
+  // Accept/pass an extra argument that layers can use to
+  // send state through the entire chain. For example, if
+  // a top layer 'knows' about another layer deeper in the call
+  // chain this can be used to pass options without affecting
+  // the intermediate layers
+  var state = findAvailable(argsArray, 'state');
+  // helpers
+  var ctx = findAvailable(argsArray, 'ctx');
+  var next = findAvailable(argsArray, 'next');
+
+  var largs = argsArray.slice();
+  largs.push(layer);
+  largs.push(state);
 
   this._layerClass.prototype[name] =
-    new Function(args,
-      '\n  var ctx = this;' +
-      '\n  var layer = arguments[arguments.length - 1];' +
-      '\n  var next = layer.next;' +
-      '\n  if (layer.impl[' + str + '])' +
-      '\n    return layer.impl[' + str + '].call(ctx, ' + args + ', ' +
-      '\n      function(' + args + ') {' +
-      '\n        next[' + str + '].call(ctx, ' + args + ', next);' +
-      '\n      }, layer);' +
-      '\n  return next[' + str + '].call(ctx, ' + args + ', next);\n');
+    new Function(largs.join(', '),
+      '\n  var '+ctx+' = this;' +
+      '\n  var '+next+' = '+layer+'.next;' +
+      '\n  if ('+layer+'.impl['+str+'])' +
+      '\n    return '+layer+'.impl['+str+'].call('+ctx+', '+args+', ' +
+      '\n      function('+args+') {' +
+      '\n        '+next+'['+str+'].call('+ctx+', '+args+', ' +
+          next+', '+state+');' +
+      '\n      }, '+layer+', '+state+');' +
+      '\n  return '+next+'['+str+'].call('+ctx+', '+args+', ' +
+          next+', '+state+');\n');
 
   metadata = xtend({
     name: name,
-    args: args && args.split(/\s*,\s*/) || []
+    args: argsArray
   }, metadata);
 
   this._methods.push(metadata);

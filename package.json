@@ -34,16 +34,16 @@
   ],
   "main": "./index",
   "dependencies": {
-    "xtend": "~2.1.2"
+    "xtend": "~2.1.2",
+    "object-create": "~0.1.0",
+    "jsonify": "0.0.0"
   },
   "devDependencies": {
     "mocha": "~1.16.2",
     "nodemon": "~1.0.7",
     "testling": "~1.5.6",
     "browserify": "~3.19.0",
-    "sinon": "~1.7.3",
-    "es5-shim": "~2.3.0",
-    "json3": "~3.2.6"
+    "sinon": "~1.7.3"
   },
   "scripts": {
     "test": "make test"
@@ -60,11 +60,6 @@
       "safari/5.1"
     ],
     "harness": "mocha",
-    "scripts": [
-      "node_modules/json3/lib/json3.js",
-      "node_modules/es5-shim/es5-shim.js",
-      "node_modules/es5-shim/es5-sham.js"
-    ],
     "files": [
       "test/*.js"
     ]

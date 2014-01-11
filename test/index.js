@@ -37,7 +37,7 @@ describe('extensible object', function() {
       equal(this, obj);
       // add a method
       this.addMethod(opts.methodName, 'arg1, arg2, arg3, cb');
-      this.addMethod('chain', 'arg', {chainContext: true});
+      this.addMethod('chain', 'arg');
       var rv = {
         chain: function(arg, next) {
           equal(this.target, obj);
@@ -96,7 +96,7 @@ describe('extensible object', function() {
       deepEqual([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
-        name: 'chain', args: ['arg'], chainContext: true
+        name: 'chain', args: ['arg']
       }], items);
     });
   });
@@ -106,8 +106,7 @@ describe('extensible object', function() {
     it('gets method by name', function() {
       deepEqual({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
                 obj.getMethod('m'));
-      deepEqual({name: 'chain', args: ['arg'], chainContext: true},
-                obj.getMethod('chain'));
+      deepEqual({name: 'chain', args: ['arg']}, obj.getMethod('chain'));
     });
   });
 
@@ -136,12 +135,12 @@ describe('extensible object', function() {
       deepEqual([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
-        name: 'chain', args: ['arg'], chainContext: true
+        name: 'chain', args: ['arg']
       }], obj._methods);
       deepEqual([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
-        name: 'chain', args: ['arg'], chainContext: true
+        name: 'chain', args: ['arg']
       }], forked._methods);
     });
 
@@ -172,12 +171,12 @@ describe('extensible object', function() {
         deepEqual([{
           name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
-          name: 'chain', args: ['arg'], chainContext: true
+          name: 'chain', args: ['arg']
         }], obj._methods);
         deepEqual([
           {name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
-          name: 'chain', args: ['arg'], chainContext: true
+          name: 'chain', args: ['arg']
         }, {
           name: 'y', args: []
         }], forked._methods);
@@ -194,11 +193,6 @@ describe('extensible object', function() {
         equal(mid, forked._top.next.next.impl);
         equal(top, obj._top.impl);
         equal(mid, obj._top.next.impl);
-      });
-
-
-      it("has the orignal object as prototype", function() {
-        equal(obj, Object.getPrototypeOf(forked));
       });
     });
   });
