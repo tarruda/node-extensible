@@ -30,13 +30,13 @@ var extensible = require('extensible');
 var levelup = extensible();
 
 // Add basic methods:
-levelup.method('open', 'location, cb');
-levelup.method('get', 'key, cb');
-levelup.method('put', 'key, value, cb');
-levelup.method('del', 'key, cb');
+levelup.addMethod('open', 'location, cb');
+levelup.addMethod('get', 'key, cb');
+levelup.addMethod('put', 'key, value, cb');
+levelup.addMethod('del', 'key, cb');
 
 // Now add the innermost layer, which implements the core database methods:
-levelup.layer({
+levelup.use({
   open: function(location, cb) {
     this.db = leveldown(location);
     this.db.open(cb);
@@ -126,7 +126,7 @@ var levelupPack = require('./levelup-pack');
 
 var db = levelup();
 // wrap into the serialization layer
-db.layer(levelupPack);
+db.use(levelupPack);
 
 var k = [1, 2, 3];
 var v = {name: 'john doe'};
@@ -155,11 +155,11 @@ module.exports = function() {
   var rv = {};
 
   // this assumes all methods follow node convention of callback as last arg
-  this.methods.forEach(function(method) {
+  this.eachMethod(function(method) {
     rv[method.name] = function() {
-      var next = arguments[arguments.length - 1];
+      var next = arguments[arguments.length - 2];
       // get all args except the 'cb' and 'next'
-      var args = Array.prototype.slice.call(arguments, 0, arguments.length - 2);
+      var args = Array.prototype.slice.call(arguments, 0, arguments.length - 3);
 
       return new rsvp.Promise(function(resolve, reject) {
         // push the actual callback
@@ -188,14 +188,14 @@ var levelupPromise = require('./levelup-promise');
 
 var db = levelup();
 // serialization
-db.layer(levelupPack);
+db.use(levelupPack);
 // promises
-db.layer(levelupPromise);
+db.use(levelupPromise);
 
 var k1 = [1, 2, 3], k2 = [4, 5, 6];
 var v1 = {name: 'foo'}, v2 = {name: 'bar'};
 
-db.open('./db-example') .then(function(err) {
+db.open('./db-example').then(function(err) {
   return db.put(k1, v1);
 }).then(function() {
   return db.put(k2, v2);
