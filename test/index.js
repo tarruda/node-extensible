@@ -7,14 +7,14 @@ for (var k in assert) global[k] = assert[k];
 
 
 describe('extensible object', function() {
-  var obj, top, mid, bot, methodName = 'm';
+  var obj, top, mid, bot, passedState, methodName = 'm';
 
 
   beforeEach(function() {
     top = {
-      chain: function(arg, next) {
-        equal(this.target, obj);
-        next(arg);
+      state: function(arg, next) {
+        equal(this, obj);
+        next(arg, passedState = {data: 5});
       }
     };
     top[methodName] = function(arg1, arg2, arg3, cb, next, layer) {
@@ -23,8 +23,8 @@ describe('extensible object', function() {
       next(arg1 * 64, arg2, arg3, function(err, rv) { cb(err, rv / 64); });
     };
     mid = {
-      chain: function(arg, next) {
-        equal(this.target, obj);
+      state: function(arg, next) {
+        equal(this, obj);
         next(arg);
       }
     };
@@ -37,11 +37,12 @@ describe('extensible object', function() {
       equal(this, obj);
       // add a method
       this.addMethod(opts.methodName, 'arg1, arg2, arg3, cb');
-      this.addMethod('chain', 'arg');
+      this.addMethod('state', 'arg');
       var rv = {
-        chain: function(arg, next) {
-          equal(this.target, obj);
-          next(arg);
+        state: function(arg, next, layer, state) {
+          equal(this, obj);
+          equal(rv, layer.impl);
+          equal(passedState, state);
         }
       };
       rv[methodName] = function(arg1, arg2, arg3, cb, next, layer) {
@@ -80,6 +81,11 @@ describe('extensible object', function() {
   });
 
 
+  it('should pass state across layers', function() {
+    obj.state(5); // assertion is done in layer definition
+  });
+
+
   describe('eachLayer', function() {
     it('iterates through each layer', function() {
       var items = [];
@@ -96,7 +102,7 @@ describe('extensible object', function() {
       deepEqual([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
-        name: 'chain', args: ['arg']
+        name: 'state', args: ['arg']
       }], items);
     });
   });
@@ -106,7 +112,7 @@ describe('extensible object', function() {
     it('gets method by name', function() {
       deepEqual({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
                 obj.getMethod('m'));
-      deepEqual({name: 'chain', args: ['arg']}, obj.getMethod('chain'));
+      deepEqual({name: 'state', args: ['arg']}, obj.getMethod('state'));
     });
   });
 
@@ -135,12 +141,12 @@ describe('extensible object', function() {
       deepEqual([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
-        name: 'chain', args: ['arg']
+        name: 'state', args: ['arg']
       }], obj._methods);
       deepEqual([{
         name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
       }, {
-        name: 'chain', args: ['arg']
+        name: 'state', args: ['arg']
       }], forked._methods);
     });
 
@@ -171,12 +177,12 @@ describe('extensible object', function() {
         deepEqual([{
           name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
-          name: 'chain', args: ['arg']
+          name: 'state', args: ['arg']
         }], obj._methods);
         deepEqual([
           {name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
-          name: 'chain', args: ['arg']
+          name: 'state', args: ['arg']
         }, {
           name: 'y', args: []
         }], forked._methods);

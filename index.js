@@ -76,14 +76,18 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
   // a top layer 'knows' about another layer deeper in the call
   // chain this can be used to pass options without affecting
   // the intermediate layers
-  var state = findAvailable(argsArray, 'state');
+  var stateOrig = findAvailable(argsArray, 'stateOrig');
+  var stateNew = findAvailable(argsArray, 'stateNew');
   // helpers
   var ctx = findAvailable(argsArray, 'ctx');
   var next = findAvailable(argsArray, 'next');
 
   var largs = argsArray.slice();
   largs.push(layer);
-  largs.push(state);
+  largs.push(stateOrig);
+
+  var nargs = argsArray.slice();
+  nargs.push(stateNew);
 
   this._layerClass.prototype[name] =
     new Function(largs.join(', '),
@@ -91,12 +95,12 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
       '\n  var '+next+' = '+layer+'.next;' +
       '\n  if ('+layer+'.impl['+str+'])' +
       '\n    return '+layer+'.impl['+str+'].call('+ctx+', '+args+', ' +
-      '\n      function('+args+') {' +
+      '\n      function('+nargs.join(',')+') {' +
       '\n        '+next+'['+str+'].call('+ctx+', '+args+', ' +
-          next+', '+state+');' +
-      '\n      }, '+layer+', '+state+');' +
+          next+', '+stateNew+' || '+stateOrig+');' +
+      '\n      }, '+layer+', '+stateOrig+');' +
       '\n  return '+next+'['+str+'].call('+ctx+', '+args+', ' +
-          next+', '+state+');\n');
+          next+', '+stateOrig+');\n');
 
   metadata = xtend({
     name: name,
@@ -105,6 +109,11 @@ Extensible.prototype.addMethod = function(name, args, metadata) {
 
   this._methods.push(metadata);
   this._methodsByName[name] = metadata;
+};
+
+
+Extensible.prototype.upgradeMethod = function(name, args, metadata) {
+
 };
 
 
