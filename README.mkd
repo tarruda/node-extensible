@@ -1,6 +1,6 @@
 # extensible
 
-#### Create highly extensible software components with a simple architecture based on layers. Useful for implementing plugin-centered frameworks or libraries that should be extended in ways unforeseen by the author
+#### Create highly extensible software components.
 
 [![Build Status](https://travis-ci.org/tarruda/node-extensible.png)](https://travis-ci.org/tarruda/node-extensible)
 <br>
