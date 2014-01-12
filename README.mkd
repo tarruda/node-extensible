@@ -45,13 +45,13 @@ var extensible = require('extensible');
 var levelup = extensible();
 
 // Add basic methods:
-levelup.defineMethod('open', 'location, cb');
-levelup.defineMethod('get', 'key, cb');
-levelup.defineMethod('put', 'key, value, cb');
-levelup.defineMethod('del', 'key, cb');
+levelup.$defineMethod('open', 'location, cb');
+levelup.$defineMethod('get', 'key, cb');
+levelup.$defineMethod('put', 'key, value, cb');
+levelup.$defineMethod('del', 'key, cb');
 
 // Now add the innermost layer, which implements the core database methods:
-levelup.use({
+levelup.$use({
   open: function(location, cb) {
     this.db = leveldown(location);
     this.db.open(cb);
@@ -72,10 +72,7 @@ levelup.use({
 
 // Export the constructor
 module.exports = function(options) {
-  // Fork the object into a new one linked with 'levelup' (inherited methods)
-  // but with its own copy of layers and method descriptors. The forked object 
-  // can be extended/modified without affecting the original
-  return levelup.fork();
+  return levelup.$fork();
 };
 ```
 
@@ -143,7 +140,7 @@ var levelupPack = require('./levelup-pack');
 
 var db = levelup();
 // wrap into the serialization layer
-db.use(levelupPack);
+db.$use(levelupPack);
 
 var k = [1, 2, 3];
 var v = {name: 'john doe'};
@@ -174,14 +171,14 @@ module.exports = function() {
   var rv = {};
 
   // this assumes all methods follow node convention of callback as last arg
-  this.eachMethodDescriptor(function(method) {
+  this.$eachMethodDescriptor(function(method) {
     // redefine the method signature by removing the last 'cb' parameter
     var newArgs = method.args.slice();
     var lastArg = newArgs.pop();
     // Only wrap if the last argument is named 'cb'
     if (lastArg !== 'cb')
       return;
-    _this.defineMethod(method.name, newArgs.join(','));
+    _this.$defineMethod(method.name, newArgs.join(','));
     rv[method.name] = function() {
       var next = arguments[arguments.length - 3];
       // get all args up to and excluding 'next'
@@ -214,9 +211,9 @@ var levelupPromise = require('./levelup-promise');
 
 var db = levelup();
 // serialization
-db.use(levelupPack);
+db.$use(levelupPack);
 // promises
-db.use(levelupPromise);
+db.$use(levelupPromise);
 
 var k1 = [1, 2, 3], k2 = [4, 5, 6];
 var v1 = {name: 'foo'}, v2 = {name: 'bar'};

@@ -6,13 +6,13 @@ var has = require('has');
 
 
 var reservedNames = {
-  use: true,
-  defineMethod: true,
-  getMethodDescriptor: true,
-  eachMethodDescriptor: true,
-  eachLayer: true,
-  fork: true,
-  instance: true
+  $use: true,
+  $defineMethod: true,
+  $getMethodDescriptor: true,
+  $eachMethodDescriptor: true,
+  $eachLayer: true,
+  $fork: true,
+  $instance: true
 };
 
 
@@ -31,7 +31,7 @@ function installLayerClass(target, sup) {
   };
 
   if (sup) {
-    layerClass.prototype = create(sup._layerClass.prototype, {
+    layerClass.prototype = create(sup.$layerClass.prototype, {
       constructor: {
         value: layerClass,
         enumerable: false,
@@ -41,7 +41,7 @@ function installLayerClass(target, sup) {
     });
   }
 
-  target._layerClass = layerClass;
+  target.$layerClass = layerClass;
 }
 
 
@@ -49,15 +49,15 @@ function installLayerClass(target, sup) {
 // methods and layers 
 function Extensible() {
   // methods installed into this object
-  this._descriptors = {};
-  this._top = null;
+  this.$descriptors = {};
+  this.$top = null;
   installLayerClass(this);
 }
 
 
 // Adds or upgrade an extensible method to the object. For minimal overhead
 // and better vm optimization, the wrapper functions will be generated.
-Extensible.prototype.defineMethod = function(name, args, descriptor) {
+Extensible.prototype.$defineMethod = function(name, args, descriptor) {
   if (has(reservedNames, name))
     throw new Error("Name '" + name + "' is reserved, use another");
 
@@ -88,7 +88,7 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
   var nargs = argsArray.slice();
   nargs.push(stateNew);
 
-  if (this._layerClass.hasInstances)
+  if (this.$layerClass.hasInstances)
     // If any layers were added for the current layer class, create a new one
     // inheriting from it. This ensures we can safely override methods without
     // affecting previous layers
@@ -96,7 +96,7 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
 
   var oargs, oldDescriptor;
 
-  if (oldDescriptor = this.getMethodDescriptor(name)) {
+  if (oldDescriptor = this.$getMethodDescriptor(name)) {
     // oargs is how we call the next layer. for that we use the old descriptor
     // arguments
     oargs = oldDescriptor.args.slice();
@@ -115,10 +115,10 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
     new Function(args,
       (
       this.DEBUG ?
-      '\n  if (!this._layerClass.hasInstances)' +
+      '\n  if (!this.$layerClass.hasInstances)' +
       '\n    throw new Error("Layer class implementation missing");' : ''
       ) + 
-      '\n  return this._top['+str+'].call(this, '+args+', this._top);\n');
+      '\n  return this.$top['+str+'].call(this, '+args+', this.$top);\n');
 
   // Generate the implementation wrapper on the layer class itself.
 
@@ -130,7 +130,7 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
   // If no implementation is provided, the next layer will be called directly.
   // This is what allows the user to only 'wrap' certain methods while leaving
   // other unnafected
-  this._layerClass.prototype[name] =
+  this.$layerClass.prototype[name] =
     new Function(largs.join(', '),
       '\n  var '+ctx+' = this;' +
       '\n  var '+next+' = '+layer+'.next;' +
@@ -160,7 +160,7 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
     name: name,
     args: argsArray,
     objectMethod: this[name],
-    layerMethod: this._layerClass.prototype[name]
+    layerMethod: this.$layerClass.prototype[name]
   }, descriptor);
 
   if (oldDescriptor) {
@@ -168,48 +168,48 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
     descriptor.old = oldDescriptor;
   }
 
-  this._descriptors[name] = descriptor;
+  this.$descriptors[name] = descriptor;
 };
 
 
 // Wraps the object into a new layer
-Extensible.prototype.use = function(middleware, opts) {
+Extensible.prototype.$use = function(middleware, opts) {
   if (typeof middleware === 'function')
     // call factory function
     middleware = middleware.call(this, opts);
 
-  this._top = new this._layerClass(middleware, this._top);
+  this.$top = new this.$layerClass(middleware, this.$top);
 };
 
 
 // Returns metadata associated with the method `name`.
-Extensible.prototype.getMethodDescriptor = function(name) {
-  return this._descriptors[name];
+Extensible.prototype.$getMethodDescriptor = function(name) {
+  return this.$descriptors[name];
 };
 
 
 // Iterates through each installed method
-Extensible.prototype.eachMethodDescriptor = function(cb) {
-  for (var k in this._descriptors) {
-    if (!has(this._descriptors, k)) continue;
-    cb(this._descriptors[k]);
+Extensible.prototype.$eachMethodDescriptor = function(cb) {
+  for (var k in this.$descriptors) {
+    if (!has(this.$descriptors, k)) continue;
+    cb(this.$descriptors[k]);
   }
 };
 
 
 // Iterates through each layer of this object
-Extensible.prototype.eachLayer = function(cb) {
+Extensible.prototype.$eachLayer = function(cb) {
   function next(layer) {
     if (!layer) return;
     if (layer.next) next(layer.next);
     cb(layer);
   }
-  next(this._top);
+  next(this.$top);
 };
 
 
 // Creates a new object whose prototype is set to the current object.
-Extensible.prototype.instance = function(init) {
+Extensible.prototype.$instance = function(init) {
   var rv = create(this);
 
   if (init)
@@ -225,12 +225,12 @@ Extensible.prototype.instance = function(init) {
 // The difference from 'instance' is that the new object receives copies
 // of the layers and method descriptors, so it can be extended without
 // affecting the current object
-Extensible.prototype.fork = function() {
-  var rv = this.instance();
+Extensible.prototype.$fork = function() {
+  var rv = this.$instance();
 
-  rv._top = null;
-  rv._descriptors = xtend({}, this._descriptors);
-  this.eachLayer(function(layer) { rv.use(layer.impl); });
+  rv.$top = null;
+  rv.$descriptors = xtend({}, this.$descriptors);
+  this.$eachLayer(function(layer) { rv.$use(layer.impl); });
 
   return rv;
 };

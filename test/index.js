@@ -41,8 +41,8 @@ describe('extensible object', function() {
       bot = function(opts) {
         equal(this, obj);
         // add a method
-        this.defineMethod(opts.methodName, 'arg1, arg2, arg3, cb');
-        this.defineMethod('state', 'arg');
+        this.$defineMethod(opts.methodName, 'arg1, arg2, arg3, cb');
+        this.$defineMethod('state', 'arg');
         var rv = {
           state: function(arg, next, layer, state) {
             equal(this, obj);
@@ -59,20 +59,20 @@ describe('extensible object', function() {
       };
 
       obj = extensible();
-      obj.use(bot, {methodName: methodName});
-      obj.use(mid);
-      obj.use(top);
+      obj.$use(bot, {methodName: methodName});
+      obj.$use(mid);
+      obj.$use(top);
 
-      sinon.spy(obj._top.impl, methodName);
-      sinon.spy(obj._top.next.impl, methodName);
-      sinon.spy(obj._top.next.next.impl, methodName);
+      sinon.spy(obj.$top.impl, methodName);
+      sinon.spy(obj.$top.next.impl, methodName);
+      sinon.spy(obj.$top.next.next.impl, methodName);
     });
 
     it('passes arguments from top to bottom layer', function() {
       obj[methodName](1, 3, 4, function() {});
-      assert(obj._top.impl[methodName].calledWith(1, 3, 4));
-      assert(obj._top.next.impl[methodName].calledWith(64, 3, 4));
-      assert(obj._top.next.next.impl[methodName].calledWith(4096, 3, 4));
+      assert(obj.$top.impl[methodName].calledWith(1, 3, 4));
+      assert(obj.$top.next.impl[methodName].calledWith(64, 3, 4));
+      assert(obj.$top.next.next.impl[methodName].calledWith(4096, 3, 4));
     });
 
 
@@ -93,16 +93,16 @@ describe('extensible object', function() {
     describe('eachLayer', function() {
       it('iterates through each layer', function() {
         var items = [];
-        obj.eachLayer(function(layer) { items.push(layer.impl); });
-        deepEqual([obj._top.next.next.impl, mid, top], items);
+        obj.$eachLayer(function(layer) { items.push(layer.impl); });
+        deepEqual([obj.$top.next.next.impl, mid, top], items);
       });
     });
 
 
-    describe('eachMethodDescriptor', function() {
+    describe('$eachMethodDescriptor', function() {
       it('iterates through each method metadata', function() {
         var items = [];
-        obj.eachMethodDescriptor(function(method) { items.push(method); });
+        obj.$eachMethodDescriptor(function(method) { items.push(method); });
         meql([{
           name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
         }, {
@@ -112,18 +112,18 @@ describe('extensible object', function() {
     });
 
 
-    describe('getMethodDescriptor', function() {
+    describe('$getMethodDescriptor', function() {
       it('gets method by name', function() {
         meql({name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']},
-             obj.getMethodDescriptor('m'));
-        meql({name: 'state', args: ['arg']}, obj.getMethodDescriptor('state'));
+             obj.$getMethodDescriptor('m'));
+        meql({name: 'state', args: ['arg']}, obj.$getMethodDescriptor('state'));
       });
     });
 
 
     describe('instance', function() {
       it('links through the prototype chain', function() {
-        assert(obj.isPrototypeOf(obj.instance()));
+        assert(obj.isPrototypeOf(obj.$instance()));
       });
     });
 
@@ -131,7 +131,7 @@ describe('extensible object', function() {
     describe('fork', function() {
       var forked;
       beforeEach(function() {
-        forked = obj.fork();
+        forked = obj.$fork();
       });
 
 
@@ -141,7 +141,7 @@ describe('extensible object', function() {
 
 
       it('should copy method descriptors', function() {
-        notEqual(obj._descriptors, forked._descriptors);
+        notEqual(obj.$descriptors, forked.$descriptors);
         meql({
           m: {
             name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
@@ -149,7 +149,7 @@ describe('extensible object', function() {
           state: {
             name: 'state', args: ['arg']
           }
-        }, obj._descriptors);
+        }, obj.$descriptors);
         meql({
           m: {
             name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
@@ -157,33 +157,33 @@ describe('extensible object', function() {
           state: {
             name: 'state', args: ['arg']
           }
-        }, forked._descriptors);
+        }, forked.$descriptors);
       });
 
 
       it('should copy layers', function() {
-        notEqual(obj._top, forked._top);
-        notEqual(obj._top.next, forked._top.next);
-        notEqual(obj._top.next.next, forked._top.next.next);
-        equal(obj._top.impl, forked._top.impl);
-        equal(obj._top.next.impl, forked._top.next.impl);
-        equal(obj._top.next.next.impl, forked._top.next.next.impl);
+        notEqual(obj.$top, forked.$top);
+        notEqual(obj.$top.next, forked.$top.next);
+        notEqual(obj.$top.next.next, forked.$top.next.next);
+        equal(obj.$top.impl, forked.$top.impl);
+        equal(obj.$top.next.impl, forked.$top.next.impl);
+        equal(obj.$top.next.next.impl, forked.$top.next.next.impl);
       });
 
 
       it('should copy layers', function() {
-        notEqual(obj._top, forked._top);
-        notEqual(obj._top.next, forked._top.next);
-        notEqual(obj._top.next.next, forked._top.next.next);
-        equal(obj._top.impl, forked._top.impl);
-        equal(obj._top.next.impl, forked._top.next.impl);
-        equal(obj._top.next.next.impl, forked._top.next.next.impl);
+        notEqual(obj.$top, forked.$top);
+        notEqual(obj.$top.next, forked.$top.next);
+        notEqual(obj.$top.next.next, forked.$top.next.next);
+        equal(obj.$top.impl, forked.$top.impl);
+        equal(obj.$top.next.impl, forked.$top.next.impl);
+        equal(obj.$top.next.next.impl, forked.$top.next.next.impl);
       });
 
 
       describe('forked object', function() {
         it("wont affect the original object methods", function() {
-          forked.defineMethod('y');
+          forked.$defineMethod('y');
           meql({
             m: {
             name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb']
@@ -191,12 +191,12 @@ describe('extensible object', function() {
           state: {
             name: 'state', args: ['arg']
           }
-          }, obj._descriptors);
+          }, obj.$descriptors);
           meql({
             m: {name: 'm', args: ['arg1', 'arg2', 'arg3', 'cb'] },
             state: { name: 'state', args: ['arg'] },
             y: { name: 'y', args: [] }
-          }, forked._descriptors);
+          }, forked.$descriptors);
           equal(true, 'm' in obj);
           equal(false, 'y' in obj);
           equal(true, 'y' in forked);
@@ -204,12 +204,12 @@ describe('extensible object', function() {
 
 
         it("wont affect the original object layers", function() {
-          forked.use(top);
-          equal(top, forked._top.impl);
-          equal(top, forked._top.next.impl);
-          equal(mid, forked._top.next.next.impl);
-          equal(top, obj._top.impl);
-          equal(mid, obj._top.next.impl);
+          forked.$use(top);
+          equal(top, forked.$top.impl);
+          equal(top, forked.$top.next.impl);
+          equal(mid, forked.$top.next.next.impl);
+          equal(top, obj.$top.impl);
+          equal(mid, obj.$top.next.impl);
         });
       });
     });
@@ -219,7 +219,7 @@ describe('extensible object', function() {
       describe('and implementation', function() {
         beforeEach(function() {
           // remove 1 arg
-          obj.defineMethod(methodName, 'arg1, arg2, cb');
+          obj.$defineMethod(methodName, 'arg1, arg2, cb');
           // add a new layer with the new signature
           var newTop = {};
           newTop[methodName] = function(arg1, arg2, cb, next, layer) {
@@ -228,17 +228,17 @@ describe('extensible object', function() {
             // the next layer should be unaffected
             next(arg1, arg2, 1000, cb);
           };
-          obj.use(newTop);
+          obj.$use(newTop);
           sinon.spy(newTop, methodName);
         });
 
 
         it('should expose new API', function() {
           obj[methodName](1, 3, function() {});
-          assert(obj._top.impl[methodName].calledWith(1, 3));
-          assert(obj._top.next.impl[methodName].calledWith(1, 3, 1000));
-          assert(obj._top.next.next.impl[methodName].calledWith(64, 3, 1000));
-          assert(obj._top.next.next.next.impl[methodName].calledWith(
+          assert(obj.$top.impl[methodName].calledWith(1, 3));
+          assert(obj.$top.next.impl[methodName].calledWith(1, 3, 1000));
+          assert(obj.$top.next.next.impl[methodName].calledWith(64, 3, 1000));
+          assert(obj.$top.next.next.next.impl[methodName].calledWith(
             4096, 3, 1000));
         });
       });
@@ -247,7 +247,7 @@ describe('extensible object', function() {
       describe('and missing implementation', function() {
         it('should throw when DEBUG is set', function() {
           obj.DEBUG = true;
-          obj.defineMethod(methodName, 'arg1, arg2, cb');
+          obj.$defineMethod(methodName, 'arg1, arg2, cb');
           throws(function() {
             obj[methodName](1, 3, function() {});
           }, /Layer class implementation missing/);
@@ -260,8 +260,8 @@ describe('extensible object', function() {
     it('should throw when DEBUG is true', function() {
       obj = extensible();
       obj.DEBUG = true;
-      obj.defineMethod('missing', 'arg1, arg2, cb');
-      obj.use({ another: function(next) { return 1; } });
+      obj.$defineMethod('missing', 'arg1, arg2, cb');
+      obj.$use({ another: function(next) { return 1; } });
       throws(function() {
         obj.missing(1, 3, function() {});
       }, /Method 'missing' has no more layers/);
