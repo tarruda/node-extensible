@@ -236,13 +236,13 @@ db.open('./db-example').then(function(err) {
 
 ## API
   * <a href="#ctor"><code><b>extensible()</b></code></a>
-  * <a href="#extensible_defineMethod"><code><b>extensible#defineMethod()</b></code></a>
-  * <a href="#extensible_use"><code><b>extensible#use()</b></code></a>
-  * <a href="#extensible_getMethodDescriptor"><code><b>extensible#getMethodDescriptor()</b></code></a>
-  * <a href="#extensible_eachMethodDescriptor"><code><b>extensible#eachMethodDescriptor()</b></code></a>
-  * <a href="#extensible_eachLayer"><code><b>extensible#eachLayer()</b></code></a>
-  * <a href="#extensible_instance"><code><b>extensible#instance()</b></code></a>
-  * <a href="#extensible_fork"><code><b>extensible#fork()</b></code></a>
+  * <a href="#extensible_defineMethod"><code><b>extensible#$defineMethod()</b></code></a>
+  * <a href="#extensible_use"><code><b>extensible#$use()</b></code></a>
+  * <a href="#extensible_getMethodDescriptor"><code><b>extensible#$getMethodDescriptor()</b></code></a>
+  * <a href="#extensible_eachMethodDescriptor"><code><b>extensible#$eachMethodDescriptor()</b></code></a>
+  * <a href="#extensible_eachLayer"><code><b>extensible#$eachLayer()</b></code></a>
+  * <a href="#extensible_instance"><code><b>extensible#$instance()</b></code></a>
+  * <a href="#extensible_fork"><code><b>extensible#$fork()</b></code></a>
 
 --------------------------------------------------------
 <a name="ctor"></a>
@@ -252,7 +252,7 @@ be the base of a new extensible component.
 
 --------------------------------------------------------
 <a name="extensible_defineMethod"></a>
-### extensible#defineMethod(name[, args[, descriptor]])
+### extensible#$defineMethod(name[, args[, descriptor]])
 Defines a new "empty" method on the object. The object has no behavior until a
 middleware implementing the method is installed with `use()`. Its possible to
 redefine an existing method with a different number of arguments/signature, in
@@ -272,7 +272,7 @@ schema.
 
 --------------------------------------------------------
 <a name="extensible_use"></a>
-### extensible#use(middleware[, opts])
+### extensible#$use(middleware[, opts])
 Extend object with `middleware`, which will become the new top layer.
 `middleware` may implement any of the methods already defined with
 `defineMethod()`. Other methods are simply ignored, even if they are added
@@ -305,31 +305,31 @@ argument.
 
 --------------------------------------------------------
 <a name="extensible_getMethodDescriptor"></a>
-### extensible#getMethodDescriptor(name)
+### extensible#$getMethodDescriptor(name)
 Returns the `descriptor` object for a previously defined method.
 
 --------------------------------------------------------
 <a name="extensible_eachMethodDescriptor"></a>
-### extensible#eachMethodDescriptor(cb)
+### extensible#$eachMethodDescriptor(cb)
 Invokes `cb` for each method descriptor defined in the object. The iteration
 order is not predictable.
 
 --------------------------------------------------------
 <a name="extensible_eachLayer"></a>
-### extensible#eachLayer(cb)
+### extensible#$eachLayer(cb)
 Invokes `cb` for each layer(object wrapping a middleware) in the object. The
 iteration order is bottom->top (middlewares installed first are visited first).
 
 --------------------------------------------------------
 <a name="extensible_instance"></a>
- ### extensible#instance()
+ ### extensible#$instance()
 Creates a 'child' object linked through the prototype chain. Its just a thin
 wrapper on `Object.create`(with ES3 compatibility) and analogous to the `new`
 keyword(Except that in this case, theres no constructor function).
 
 --------------------------------------------------------
 <a name="extensible_fork"></a>
- ### extensible#fork()
+ ### extensible#$fork()
 Same as `instance()`, but the new object has a copy of all layers and method
 descriptors, meaning it can be modified/extending without affecting the
 original.
