@@ -30,10 +30,10 @@ var extensible = require('extensible');
 var levelup = extensible();
 
 // Add basic methods:
-levelup.addMethod('open', 'location, cb');
-levelup.addMethod('get', 'key, cb');
-levelup.addMethod('put', 'key, value, cb');
-levelup.addMethod('del', 'key, cb');
+levelup.defineMethod('open', 'location, cb');
+levelup.defineMethod('get', 'key, cb');
+levelup.defineMethod('put', 'key, value, cb');
+levelup.defineMethod('del', 'key, cb');
 
 // Now add the innermost layer, which implements the core database methods:
 levelup.use({
@@ -155,7 +155,7 @@ module.exports = function() {
   var rv = {};
 
   // this assumes all methods follow node convention of callback as last arg
-  this.eachMethod(function(method) {
+  this.eachMethodDescriptor(function(method) {
     rv[method.name] = function() {
       var next = arguments[arguments.length - 2];
       // get all args except the 'cb' and 'next'
