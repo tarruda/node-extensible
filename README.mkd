@@ -1,6 +1,6 @@
 # extensible
 
-#### Create highly extensible software components with a simple architecture based on layers. Useful for implementing plugin-centered frameworks or libraries that can be extended in unforeseen ways.
+#### Create highly extensible software components with a simple architecture based on layers. Useful for implementing plugin-centered frameworks or libraries that should be extended in ways unforeseen by the author
 
 [![Build Status](https://travis-ci.org/tarruda/node-extensible.png)](https://travis-ci.org/tarruda/node-extensible)
 <br>
@@ -13,14 +13,29 @@
 npm install --save extensible
 ```
 
+## Introduction
+
+This library simplifies modularization of cross-cutting concerns in
+libraries/applications. It's a simple framework for doing [aspect-oriented
+programming](http://en.wikipedia.org/wiki/Aspect-oriented_programming) in
+javascript software.
+
+Objects created by the exported factory function can be extended with
+methods(empty prototypes) and
+[middlewares](http://en.wikipedia.org/wiki/Middleware), with middlewares
+implementing one or more aspects of some of its owner's methods(the owner is
+simply the context 'this' of the call).
+
+For maximum reuse, middlewares should be very small and keep their knowledge of
+other installed middlewares to a minimum. In practice, they will know something
+about the some of its "lower" layers(though not necessarily adjacent layers) in
+order to provide correct input.
+
 ## Usage
 
-This package provides simple framework which can be used to create libraries
-composed of layers, similar to connect middlewares. The best way to understand
-is through an example that shows its features.
-
-The goal of this example is to build a tiny database library based on
-leveldb(leveldown) which can be extended via plugins:
+The best way to understand is through an example that shows its features. We
+will build a tiny database library based on leveldb(leveldown) which can be
+extended via plugins:
 
 ```js
 // levelup.js
@@ -58,7 +73,8 @@ levelup.use({
 // Export the constructor
 module.exports = function(options) {
   // Fork the object into a new one linked with 'levelup' (inherited methods)
-  // but with its own copy of layers and method descriptors
+  // but with its own copy of layers and method descriptors. The forked object 
+  // can be extended/modified without affecting the original
   return levelup.fork();
 };
 ```
@@ -115,10 +131,11 @@ module.exports = {
 };
 ```
 
-Note that we havent altered the 'open' method. When a layer doens't implement a
-method its simply passed through the next layer.
+Note that we havent altered the 'open' method. When a middleware doesn't
+implement a method, it will automatically invoke next layer.
 
-To use the new feature, wrap the db object into the created layer:
+To use the new feature, install the middleware into the db object, which will
+wrap it into another layer:
 
 ```js
 var levelup = require('./levelup');
@@ -140,34 +157,43 @@ db.open('./db-example', function(err) {
 });
 ```
 
-Layer objects can also be functions, which are called with the context set to
-the object being wrapped. To illustrate lets build a plugin which converts our
-API to return objects implementing the 'Promises/A+ spec' through the 'rsvp'
-library. It will also show how to use the 'methods' property to obtain basic
-information about the object and its methods:
+Middlewares can also be functions, which are called with the context set to the
+object being extended. To illustrate lets build a plugin which converts our API
+to return objects implementing the Promises/A+ spec through the 'rsvp' promise
+library.
 
+This example will also show how to perform instrospection and modify a method
+signature while maintaining compatibility with previous layers:
 
 ```js
 // levelup-promise.js
 var rsvp = require('rsvp');
 
 module.exports = function() {
+  var _this = this; // reference to the object
   var rv = {};
 
   // this assumes all methods follow node convention of callback as last arg
   this.eachMethodDescriptor(function(method) {
+    // redefine the method signature by removing the last 'cb' parameter
+    var newArgs = method.args.slice();
+    var lastArg = newArgs.pop();
+    // Only wrap if the last argument is named 'cb'
+    if (lastArg !== 'cb')
+      return;
+    _this.defineMethod(method.name, newArgs.join(','));
     rv[method.name] = function() {
-      var next = arguments[arguments.length - 2];
-      // get all args except the 'cb' and 'next'
+      var next = arguments[arguments.length - 3];
+      // get all args up to and excluding 'next'
       var args = Array.prototype.slice.call(arguments, 0, arguments.length - 3);
 
       return new rsvp.Promise(function(resolve, reject) {
-        // push the actual callback
-        args.push(function(err) {
+        // push the callback for the next layer, which still has the old
+        // method signature
+        args.push(function(err, result) {
           if (err) return reject(err);
-          var result = Array.prototype.slice.call(arguments, 1, arguments.length);
           // resolve passing all values returned
-          resolve.apply(this, result);
+          resolve(result);
         });
 
         next.apply(this, args);
@@ -179,7 +205,7 @@ module.exports = function() {
 };
 ```
 
-Again, to use it simply wrap on top of the db object:
+Now install on the db object to wrap it into another layer:
 
 ```js
 var levelup = require('./levelup');
@@ -211,5 +237,102 @@ db.open('./db-example').then(function(err) {
 });
 ```
 
-With this simple pattern for organizing code, one can build very complex and
-maintainable systems.
+## API
+  * <a href="#ctor"><code><b>extensible()</b></code></a>
+  * <a href="#extensible_defineMethod"><code><b>extensible#defineMethod()</b></code></a>
+  * <a href="#extensible_use"><code><b>extensible#use()</b></code></a>
+  * <a href="#extensible_getMethodDescriptor"><code><b>extensible#getMethodDescriptor()</b></code></a>
+  * <a href="#extensible_eachMethodDescriptor"><code><b>extensible#eachMethodDescriptor()</b></code></a>
+  * <a href="#extensible_eachLayer"><code><b>extensible#eachLayer()</b></code></a>
+  * <a href="#extensible_instance"><code><b>extensible#instance()</b></code></a>
+  * <a href="#extensible_fork"><code><b>extensible#fork()</b></code></a>
+
+--------------------------------------------------------
+<a name="ctor"></a>
+### extensible()
+The `extensible` constructor function returns a new, empty object which can
+be the base of a new extensible component.
+
+--------------------------------------------------------
+<a name="extensible_defineMethod"></a>
+### extensible#defineMethod(name[, args[, descriptor]])
+Defines a new "empty" method on the object. The object has no behavior until a
+middleware implementing the method is installed with `use()`. Its possible to
+redefine an existing method with a different number of arguments/signature, in
+which case the middleware must adapt the arguments for the next layer which
+still uses the old signature.
+
+`name` is the method name and may be any valid javascript property name.
+
+`args` is a string with comma-separated parameter names which are used to
+generate the middleware wrapper functions, so it must match the middleware's
+method signature.
+
+`descriptor` is an object containing metadata that can be discovered and
+introspected later, possibly by other middlewares/plugins. The object passed to
+`descriptor` is merged with an object with the `{name(string), args(array)}`
+schema.
+
+--------------------------------------------------------
+<a name="extensible_use"></a>
+### extensible#use(middleware[, opts])
+Extend object with `middleware`, which will become the new top layer.
+`middleware` may implement any of the methods already defined with
+`defineMethod()`. Other methods are simply ignored, even if they are added
+later.
+
+The implemented methods must have the same number of arguments passed to the
+corresponding `defineMethod()`. It may can optionally handle the `next`,
+`layer` and `state` arguments described as follows:
+
+- `next`: Helper function to call the next middleware. This function has the
+  same parameters declared with `defineMethod()` and may also accept an extra
+  `state` described below. This must not be called if the middleware is the
+  first added to the object(is the bottom layer). If the method was upgraded,
+  `next` will have the signature of the method defined in the middleware
+  'below.'
+
+- `layer`: Object that wraps the current middleware and has a reference to the
+  next middleware through a 'next' property. This can be used to call another
+  method in a lower layer without passing through the whole middleware
+  pipeline.
+
+- `state`: Argument which is passed implicitly through the middleware
+  pipeline and may be modified by any of the invoked middlewares. One use
+  case for this is to pass options to a non-adjacent lower middleware
+  separated by middlewares with 'incompatible signatures'.
+
+If `middleware` is a function it will be treated as a middleware factory and
+called with the object being extended as context(`this`) and `opts` as
+argument.
+
+--------------------------------------------------------
+<a name="extensible_getMethodDescriptor"></a>
+### extensible#getMethodDescriptor(name)
+Returns the `descriptor` object for a previously defined method.
+
+--------------------------------------------------------
+<a name="extensible_eachMethodDescriptor"></a>
+### extensible#eachMethodDescriptor(cb)
+Invokes `cb` for each method descriptor defined in the object. The iteration
+order is not predictable.
+
+--------------------------------------------------------
+<a name="extensible_eachLayer"></a>
+### extensible#eachLayer(cb)
+Invokes `cb` for each layer(object wrapping a middleware) in the object. The
+iteration order is bottom->top (middlewares installed first are visited first).
+
+--------------------------------------------------------
+<a name="extensible_instance"></a>
+ ### extensible#instance()
+Creates a 'child' object linked through the prototype chain. Its just a thin
+wrapper on `Object.create`(with ES3 compatibility) and analogous to the `new`
+keyword(Except that in this case, theres no constructor function).
+
+--------------------------------------------------------
+<a name="extensible_fork"></a>
+ ### extensible#fork()
+Same as `instance()`, but the new object has a copy of all layers and method
+descriptors, meaning it can be modified/extending without affecting the
+original.

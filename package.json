@@ -16,6 +16,12 @@
     "extensions",
     "extensible",
     "extensibility",
+    "aop",
+    "aspect",
+    "aspects",
+    "cross-cutting",
+    "cross-cutting-concerns",
+    "aspect-oriented-programming",
     "ocp",
     "open-closed-principle"
   ],
@@ -56,7 +62,7 @@
       "chrome" : [ 10, 22 ],
       "safari" : [ 5.1 ],
       "opera" : [ 12 ]
-    }
+    },
     "harness": "mocha",
     "files": [
       "test/*.js"

@@ -55,16 +55,6 @@ function Extensible() {
 }
 
 
-// Wraps the object into a new layer
-Extensible.prototype.use = function(layer, opts) {
-  if (typeof layer === 'function')
-    // call factory function
-    layer = layer.call(this, opts);
-
-  this._top = new this._layerClass(layer, this._top);
-};
-
-
 // Adds or upgrade an extensible method to the object. For minimal overhead
 // and better vm optimization, the wrapper functions will be generated.
 Extensible.prototype.defineMethod = function(name, args, descriptor) {
@@ -179,6 +169,16 @@ Extensible.prototype.defineMethod = function(name, args, descriptor) {
   }
 
   this._descriptors[name] = descriptor;
+};
+
+
+// Wraps the object into a new layer
+Extensible.prototype.use = function(middleware, opts) {
+  if (typeof middleware === 'function')
+    // call factory function
+    middleware = middleware.call(this, opts);
+
+  this._top = new this._layerClass(middleware, this._top);
 };
 
 
