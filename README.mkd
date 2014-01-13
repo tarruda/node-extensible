@@ -20,22 +20,20 @@ libraries/applications. It's a simple framework for doing [aspect-oriented
 programming](http://en.wikipedia.org/wiki/Aspect-oriented_programming) in
 javascript software.
 
-Objects created by the exported factory function can be extended with
-methods(empty prototypes) and
-[middlewares](http://en.wikipedia.org/wiki/Middleware), with middlewares
-implementing one or more aspects of some of its owner's methods(the owner is
-simply the context 'this' of the call).
-
-For maximum reuse, middlewares should be very small and keep their knowledge of
-other installed middlewares to a minimum. In practice, they will know something
-about the some of its "lower" layers(though not necessarily adjacent layers) in
-order to provide correct input.
+Objects created by the exported function can be extended with methods(empty
+prototypes) and [middlewares](http://en.wikipedia.org/wiki/Middleware) that
+implement aspects of the object's methods.
 
 ## Usage
 
+For maximum reuse, middlewares should be very small and keep their knowledge of
+other installed middlewares to a minimum. In practice, they will know something
+about middlewares installed in deeper layers.
+
 The best way to understand is through an example that shows its features. We
 will build a tiny database library based on leveldb(leveldown) which can be
-extended via plugins:
+extended via plugins. The following code defines the core API and the
+innermost middleware/layer:
 
 ```js
 // levelup.js
@@ -70,7 +68,7 @@ levelup.$use({
   }
 });
 
-// Export the constructor
+// Export a constructor
 module.exports = function(options) {
   return levelup.$fork();
 };

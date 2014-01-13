@@ -1,9 +1,11 @@
-/*jshint eqnull:true, evil: true */
+/* jshint eqnull:true, evil: true */
 var xtend = require('xtend');
 var create = require('object-create');
 var jsonify = require('jsonify');
 var has = require('has');
 
+
+var slice = Array.prototype.slice;
 
 var reservedNames = {
   $use: true,
@@ -12,7 +14,10 @@ var reservedNames = {
   $eachMethodDescriptor: true,
   $eachLayer: true,
   $fork: true,
-  $instance: true
+  $instance: true,
+  $layerClass: true,
+  $layers: true,
+  $descriptors: true
 };
 
 
@@ -50,7 +55,7 @@ function installLayerClass(target, sup) {
 function Extensible() {
   // methods installed into this object
   this.$descriptors = {};
-  this.$top = null;
+  this.$layers = {top: null};
   installLayerClass(this);
 }
 
@@ -118,7 +123,8 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
       '\n  if (!this.$layerClass.hasInstances)' +
       '\n    throw new Error("Layer class implementation missing");' : ''
       ) + 
-      '\n  return this.$top['+str+'].call(this, '+args+', this.$top);\n');
+      '\n  return this.$layers.top['+str+'].call(this, '+args+','+
+      ' this.$layers.top);\n');
 
   // Generate the implementation wrapper on the layer class itself.
 
@@ -137,7 +143,14 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
       '\n  if ('+layer+'.impl['+str+'])' +
       '\n    return '+layer+'.impl['+str+'].call('+ctx+', '+args+', ' +
       '\n      function('+nargs.join(', ')+') {' +
-      '\n        '+next+'['+str+'].call('+ctx+', '+oargs+', ' +
+      (
+      this.DEBUG ?
+      '\n        if (!'+next+' || typeof '+next+'['+str+'] !== "function")' +
+      '\n          throw new Error(' +
+      '              "Method \'"+ '+str+' +"\' has no more layers");\n' :
+      ''
+      ) +
+      '\n        return '+next+'['+str+'].call('+ctx+', '+oargs+', ' +
           next+', '+stateNew+' || '+stateOrig+');' +
       '\n      }, '+layer+', '+stateOrig+');' +
       (
@@ -178,7 +191,7 @@ Extensible.prototype.$use = function(middleware, opts) {
     // call factory function
     middleware = middleware.call(this, opts);
 
-  this.$top = new this.$layerClass(middleware, this.$top);
+  this.$layers.top = new this.$layerClass(middleware, this.$layers.top);
 };
 
 
@@ -204,16 +217,22 @@ Extensible.prototype.$eachLayer = function(cb) {
     if (layer.next) next(layer.next);
     cb(layer);
   }
-  next(this.$top);
+  next(this.$layers.top);
 };
 
 
 // Creates a new object whose prototype is set to the current object.
-Extensible.prototype.$instance = function(init) {
-  var rv = create(this);
+Extensible.prototype.$instance = function() {
+  var rv;
 
-  if (init)
-    init.call(rv);
+  if (typeof this === 'function') rv = this.$fork(true, true);
+  else rv = this.$fork(false, true);
+
+  if (rv.$constructor) {
+    var args = slice.call(arguments);
+    args.push(rv.$layers.top);
+    rv.$constructor.apply(rv, args);
+  }
 
   return rv;
 };
@@ -221,16 +240,39 @@ Extensible.prototype.$instance = function(init) {
 
 // Forks by creating a new object with all methods and layers from the current
 // object.
-//
-// The difference from 'instance' is that the new object receives copies
-// of the layers and method descriptors, so it can be extended without
-// affecting the current object
-Extensible.prototype.$fork = function() {
-  var rv = this.$instance();
+Extensible.prototype.$fork = function(asCallable, inheritProperties) {
+  var rv;
 
-  rv.$top = null;
-  rv.$descriptors = xtend({}, this.$descriptors);
-  this.$eachLayer(function(layer) { rv.$use(layer.impl); });
+  if (asCallable || typeof this === 'function') {
+    rv = function Callable() {
+      var args = slice.call(arguments);
+      args.push(rv.$layers.top);
+      return rv.$call.apply(rv, args);
+    };
+
+    var k;
+    // cant inherit from functions in a portable way, so simply copy
+    // the relevant properties
+    for (k in reservedNames) {
+      if (!has(reservedNames, k)) continue;
+      rv[k] = this[k];
+    }
+
+    // and also methods defined with '$defineMethod'
+    for (k in this.$descriptors) {
+      if (!has(this.$descriptors, k)) continue;
+      rv[k] = this[k];
+    }
+  } else {
+    rv = create(this);
+  }
+
+  if (!inheritProperties) {
+    rv.$layers = {top: null};
+    rv.$descriptors = xtend({}, this.$descriptors);
+    rv.$layerClass = this.$layerClass;
+    this.$eachLayer(function(layer) { rv.$use(layer.impl); });
+  }
 
   return rv;
 };
