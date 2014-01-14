@@ -27,7 +27,6 @@ function findAvailable(args, name) {
   return name;
 }
 
-
 function installLayerClass(target, sup) {
   var layerClass = function Layer(impl, next) {
     this.impl = impl;
@@ -273,6 +272,8 @@ Extensible.prototype.$fork = function(asCallable, inheritProperties) {
     rv.$layerClass = this.$layerClass;
     this.$eachLayer(function(layer) { rv.$use(layer.impl); });
   }
+
+  rv.$parent = this;
 
   return rv;
 };

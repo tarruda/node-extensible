@@ -68,6 +68,7 @@ describe('extensible', function() {
         sinon.spy(obj.$layers.top.next.next.impl, methodName);
       });
 
+
       it('passes arguments from top to bottom layer', function() {
         obj[methodName](1, 3, 4, function() {});
         assert(obj.$layers.top.impl[methodName].calledWith(1, 3, 4));
@@ -138,6 +139,11 @@ describe('extensible', function() {
 
         it('links through the prototype chain', function() {
           assert(obj.isPrototypeOf(forked));
+        });
+
+
+        it('links through $parent', function() {
+          equal(forked.$parent, obj);
         });
 
 
@@ -336,6 +342,12 @@ describe('extensible', function() {
         equal(f2('world'), 'Hello constant from another');
         equal(func('world'), 'Hello world from greeter');
       });
+    });
+
+
+    it('is linked with parent', function() {
+      var f2 = func.$instance();
+      equal(f2.$parent, func);
     });
 
 
