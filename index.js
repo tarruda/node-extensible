@@ -15,9 +15,11 @@ var reservedNames = {
   $eachLayer: true,
   $fork: true,
   $instance: true,
+  $instanceOf: true,
   $layerClass: true,
   $layers: true,
-  $descriptors: true
+  $descriptors: true,
+  $parent: true
 };
 
 
@@ -276,6 +278,19 @@ Extensible.prototype.$fork = function(asCallable, inheritProperties) {
   rv.$parent = this;
 
   return rv;
+};
+
+
+Extensible.prototype.$instanceOf = function(other) {
+  var current = this;
+
+  while (current) {
+    if (current.$parent === other)
+      return true;
+    current = current.$parent;
+  }
+
+  return false;
 };
 
 

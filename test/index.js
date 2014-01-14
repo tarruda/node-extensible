@@ -147,6 +147,26 @@ describe('extensible', function() {
         });
 
 
+        describe('instanceOf', function() {
+          var child;
+
+
+          beforeEach(function() {
+            child = forked.$fork();
+          });
+
+
+          it('is true if an object forked directly', function() {
+            assert(child.$instanceOf(forked));
+          });
+
+
+          it('is true if an object forked indirectly', function() {
+            assert(child.$instanceOf(obj));
+          });
+        });
+
+
         it('should copy method descriptors', function() {
           notEqual(obj.$descriptors, forked.$descriptors);
           meql({
@@ -348,6 +368,27 @@ describe('extensible', function() {
     it('is linked with parent', function() {
       var f2 = func.$instance();
       equal(f2.$parent, func);
+    });
+
+
+    describe('instanceOf', function() {
+      var f1, f2;
+
+
+      beforeEach(function() {
+        f1 = func.$fork();
+        f2 = f1.$fork();
+      });
+
+
+      it('is true if an object forked directly', function() {
+        assert(f1.$instanceOf(func));
+      });
+
+
+      it('is true if an object forked indirectly', function() {
+        assert(f2.$instanceOf(func));
+      });
     });
 
 
