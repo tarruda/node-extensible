@@ -311,8 +311,8 @@ describe('extensible', function() {
       beforeEach(function() {
         func.$defineMethod('$call', 'name');
         func.$use({
-          $call: function(name) {
-            return 'Hello ' + name + ' from ' + this.origin;
+          $call: function(name, next, layer, state, self) {
+            return 'Hello ' + name + ' from ' + self.origin;
           }
         });
         func.origin = 'greeter';
@@ -333,6 +333,18 @@ describe('extensible', function() {
         });
         equal('Hello world from greeter, extended by foo',
               func('world', 'foo'));
+      });
+
+
+      it('can be called like a method', function() {
+        func.$defineMethod('$call');
+        func.$use({
+          $call: function() {
+            return 'Hello from ' + this.name;
+          }
+        });
+        var obj = { greet: func, name: 'object' };
+        equal('Hello from object', obj.greet());
       });
 
 

@@ -81,12 +81,21 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
   var stateNew = findAvailable(argsArray, 'stateNew');
   // Helpers on the generated method
   var ctx = findAvailable(argsArray, 'ctx');
+  var cargs = args ? ',' + args : '';
+  // override for context passed to middlewares. For now only used for
+  // the $call method on functions
+  var oCtx = findAvailable(argsArray, 'oCtx');
   var next = findAvailable(argsArray, 'next');
+  // Actual function arguments. It contains an extra oCtx that can be used
+  // to override the context for callable objects
+  var fargs = argsArray.slice();
+  fargs.push(oCtx);
   // largs is the parameter array for the layer version of the method. It
-  // contains two extra parameters: 'layer' and 'stateOrig'
+  // contains three extra parameters: 'layer', 'stateOrig' and 'oCtx'
   var largs = argsArray.slice();
   largs.push(layer);
   largs.push(stateOrig);
+  largs.push(oCtx);
   // nargs is the parameter array for the 'next' function passed to the layer
   // implementation. It has the same signature as the method, but with an
   // trailing 'stateNew' parameter that can be used to modify state for
@@ -118,14 +127,14 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
   // Generate the wrapper on the object itself. It just delegates work to
   // the top layer
   this[name] =
-    new Function(args,
+    new Function(fargs.join(', '),
       (
       this.DEBUG ?
       '\n  if (!this.$layerClass.hasInstances)' +
       '\n    throw new Error("Layer class implementation missing");' : ''
       ) + 
-      '\n  return this.$layers.top['+str+'].call(this, '+args+','+
-      ' this.$layers.top);\n');
+      '\n  return this.$layers.top['+str+'].call(this'+cargs+','+
+      ' this.$layers.top, null, '+oCtx+' || this);\n');
 
   // Generate the implementation wrapper on the layer class itself.
 
@@ -142,7 +151,7 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
       '\n  var '+ctx+' = this;' +
       '\n  var '+next+' = '+layer+'.next;' +
       '\n  if ('+layer+'.impl['+str+'])' +
-      '\n    return '+layer+'.impl['+str+'].call('+ctx+', '+args+', ' +
+      '\n    return '+layer+'.impl['+str+'].call('+oCtx + cargs+', ' +
       '\n      function('+nargs.join(', ')+') {' +
       (
       this.DEBUG ?
@@ -152,8 +161,8 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
       ''
       ) +
       '\n        return '+next+'['+str+'].call('+ctx+', '+oargs+', ' +
-          next+', '+stateNew+' || '+stateOrig+');' +
-      '\n      }, '+layer+', '+stateOrig+');' +
+          next+', '+stateNew+' || '+stateOrig+', '+oCtx+');' +
+      '\n      }, '+layer+', '+stateOrig+', '+ctx+');' +
       (
       oldDescriptor && this.DEBUG ?
       '\n  throw new Error(' +
@@ -167,8 +176,8 @@ Extensible.prototype.$defineMethod = function(name, args, descriptor) {
       '        "Method \'"+ '+str+' +"\' has no more layers");\n' :
       ''
       ) +
-      '\n  return '+next+'['+str+'].call('+ctx+', '+args+', ' +
-          next+', '+stateOrig+');\n');
+      '\n  return '+next+'['+str+'].call('+ctx + cargs+', ' +
+          next+', '+stateOrig+', '+oCtx+');\n');
 
   descriptor = xtend({
     name: name,
@@ -247,7 +256,7 @@ Extensible.prototype.$fork = function(asCallable, inheritProperties) {
   if (asCallable || typeof this === 'function') {
     rv = function Callable() {
       var args = slice.call(arguments);
-      args.push(rv.$layers.top);
+      args.push(this);
       return rv.$call.apply(rv, args);
     };
 
