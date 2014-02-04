@@ -178,9 +178,9 @@ module.exports = function() {
       return;
     _this.$defineMethod(method.name, newArgs.join(','));
     rv[method.name] = function() {
-      var next = arguments[arguments.length - 3];
+      var next = arguments[arguments.length - 4];
       // get all args up to and excluding 'next'
-      var args = Array.prototype.slice.call(arguments, 0, arguments.length - 3);
+      var args = Array.prototype.slice.call(arguments, 0, arguments.length - 4);
 
       return new rsvp.Promise(function(resolve, reject) {
         // push the callback for the next layer, which still has the old
@@ -239,8 +239,9 @@ db.open('./db-example').then(function(err) {
   * <a href="#extensible_getMethodDescriptor"><code><b>extensible#$getMethodDescriptor()</b></code></a>
   * <a href="#extensible_eachMethodDescriptor"><code><b>extensible#$eachMethodDescriptor()</b></code></a>
   * <a href="#extensible_eachLayer"><code><b>extensible#$eachLayer()</b></code></a>
-  * <a href="#extensible_instance"><code><b>extensible#$instance()</b></code></a>
   * <a href="#extensible_fork"><code><b>extensible#$fork()</b></code></a>
+  * <a href="#extensible_instance"><code><b>extensible#$instance()</b></code></a>
+  * <a href="#extensible_instanceOf"><code><b>extensible#$instanceOf()</b></code></a>
 
 --------------------------------------------------------
 <a name="ctor"></a>
@@ -251,11 +252,11 @@ be the base of a new extensible component.
 --------------------------------------------------------
 <a name="extensible_defineMethod"></a>
 ### extensible#$defineMethod(name[, args[, descriptor]])
-Defines a new "empty" method on the object. The object has no behavior until a
-middleware implementing the method is installed with `use()`. Its possible to
+Defines a new empty method on the object. The object has no behavior until a
+middleware implementing some aspect is installed with `use()`. Its possible to
 redefine an existing method with a different number of arguments/signature, in
-which case the middleware must adapt the arguments for the next layer which
-still uses the old signature.
+which case the middleware must take care of adapting the arguments for the next
+layer(which still uses the old signature).
 
 `name` is the method name and may be any valid javascript property name.
 
@@ -277,15 +278,15 @@ Extend object with `middleware`, which will become the new top layer.
 later.
 
 The implemented methods must have the same number of arguments passed to the
-corresponding `defineMethod()`. It may can optionally handle the `next`,
-`layer` and `state` arguments described as follows:
+last `defineMethod()` call. It may can optionally use the `next`,
+`layer`, `state` and `self` arguments described as follows:
 
-- `next`: Helper function to call the next middleware. This function has the
-  same parameters declared with `defineMethod()` and may also accept an extra
-  `state` described below. This must not be called if the middleware is the
-  first added to the object(is the bottom layer). If the method was upgraded,
-  `next` will have the signature of the method defined in the middleware
-  'below.'
+- `next`: Helper function to call the next middleware layer. This function has
+  the same parameters declared with `defineMethod()` and may also accept an
+  extra `state` described below. This must not be called if the middleware was
+  the first added to the object(it is the bottom layer). If the method was
+  upgraded, `next` will have the signature of the method defined in the
+  next middleware layer. 
 
 - `layer`: Object that wraps the current middleware and has a reference to the
   next middleware through a 'next' property. This can be used to call another
@@ -297,9 +298,12 @@ corresponding `defineMethod()`. It may can optionally handle the `next`,
   case for this is to pass options to a non-adjacent lower middleware
   separated by middlewares with 'incompatible signatures'.
 
-If `middleware` is a function it will be treated as a middleware factory and
-called with the object being extended as context(`this`) and `opts` as
-argument.
+- `self`: Reference to the extensible object. This is only used by the special
+  `$call` method(See the '$fork' method below) for when the callable object is
+   called like a method(`this` no longer points to the extensible object).
+
+If `middleware` is a function it will be treated as a factory and called with
+the object being extended as context(`this`) and `opts` as argument.
 
 --------------------------------------------------------
 <a name="extensible_getMethodDescriptor"></a>
@@ -319,15 +323,30 @@ Invokes `cb` for each layer(object wrapping a middleware) in the object. The
 iteration order is bottom->top (middlewares installed first are visited first).
 
 --------------------------------------------------------
-<a name="extensible_instance"></a>
- ### extensible#$instance()
-Creates a 'child' object linked through the prototype chain. Its just a thin
-wrapper on `Object.create`(with ES3 compatibility) and analogous to the `new`
-keyword(Except that in this case, theres no constructor function).
+<a name="extensible_fork"></a>
+ ### extensible#$fork([asCallable[, inheritProperties]])
+Forks by creating a new object with all methods and layers from the current
+object. It may be called with two optional arguments:
+
+- `asCallable`: The forked object is callable, meaning that a function is
+  returned. For most purposes, it may be used as a normal `extensible()`
+
+- `inheritProperties`: If true, the parent properties will be inherited
+  through the prototype chain instead of simply copied. If a falsy value
+  is passed(the default) the forked object will contain separate properties
+  for the layers and descriptors, so it may be extended independently of
+  the original object.
 
 --------------------------------------------------------
-<a name="extensible_fork"></a>
- ### extensible#$fork()
-Same as `instance()`, but the new object has a copy of all layers and method
-descriptors, meaning it can be modified/extending without affecting the
-original.
+<a name="extensible_instance"></a>
+ ### extensible#$instance()
+For normal objects, this creates a child object linked through the prototype
+chain(Unlike $fork, the child object cannot be extended independently).
+If the object is callable, the properties/methods are simply copied(normal
+javascript inheritance becomes broken for this object and its children).
+
+--------------------------------------------------------
+<a name="extensible_instanceOf"></a>
+ ### extensible#$instanceOf()
+Replacement for `instanceof` that works with callable objects.
+
