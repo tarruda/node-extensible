@@ -1,7 +1,7 @@
 {
   "name": "extensible",
   "description": "Create highly extensible software components.",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "homepage": "https://github.com/tarruda/node-extensible",
   "author": {
     "name": "Thiago de Arruda",
