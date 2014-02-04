@@ -324,12 +324,14 @@ iteration order is bottom->top (middlewares installed first are visited first).
 
 --------------------------------------------------------
 <a name="extensible_fork"></a>
- ### extensible#$fork([asCallable[, inheritProperties]])
+### extensible#$fork([asCallable[, inheritProperties]])
 Forks by creating a new object with all methods and layers from the current
 object. It may be called with two optional arguments:
 
 - `asCallable`: The forked object is callable, meaning that a function is
-  returned. For most purposes, it may be used as a normal `extensible()`
+  returned. To implement the function behavior, implement the $call method
+  (Read below). For most purposes, it may be used as a normal `extensible()`
+  that can be called like a function.
 
 - `inheritProperties`: If true, the parent properties will be inherited
   through the prototype chain instead of simply copied. If a falsy value
@@ -339,14 +341,23 @@ object. It may be called with two optional arguments:
 
 --------------------------------------------------------
 <a name="extensible_instance"></a>
- ### extensible#$instance()
+### extensible#$instance()
 For normal objects, this creates a child object linked through the prototype
 chain(Unlike $fork, the child object cannot be extended independently).
 If the object is callable, the properties/methods are simply copied(normal
 javascript inheritance becomes broken for this object and its children).
+This will call a `$constructor` method if defined, forwarding any passed
+arguments.
 
 --------------------------------------------------------
 <a name="extensible_instanceOf"></a>
- ### extensible#$instanceOf()
+### extensible#$instanceOf()
 Replacement for `instanceof` that works with callable objects.
 
+## Special methods
+
+Extensible objects can implement the following special methods(in the same
+middleware-based architecture of normal methods):
+
+- `$call`: This implements the behavior of calling callable objects.
+- `$constructor`: Initializer called with arguments passed to `$instance`

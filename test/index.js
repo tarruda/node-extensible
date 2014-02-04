@@ -91,7 +91,7 @@ describe('extensible', function() {
       });
 
 
-      describe('eachLayer', function() {
+      describe('$eachLayer', function() {
         it('iterates through each layer', function() {
           var items = [];
           obj.$eachLayer(function(layer) { items.push(layer.impl); });
@@ -123,14 +123,28 @@ describe('extensible', function() {
       });
 
 
-      describe('instance', function() {
+      describe('$instance', function() {
         it('links through the prototype chain', function() {
           assert(obj.isPrototypeOf(obj.$instance()));
+        });
+
+
+        it('calls $constructor when defined', function() {
+          obj.$defineMethod('$constructor', 'arg1, arg2');
+          obj.$use({
+            $constructor: function(arg1, arg2) {
+              this.arg1 = arg1;
+              this.arg2 = arg2;
+            }
+          });
+          var obj2 = obj.$instance('a1', 'a2');
+          equal(obj2.arg1, 'a1');
+          equal(obj2.arg2, 'a2');
         });
       });
 
 
-      describe('fork', function() {
+      describe('$fork', function() {
         var forked;
         beforeEach(function() {
           forked = obj.$fork();
@@ -147,7 +161,7 @@ describe('extensible', function() {
         });
 
 
-        describe('instanceOf', function() {
+        describe('$instanceOf', function() {
           var child;
 
 
